@@ -10,6 +10,19 @@ const SOURCES = [
   { value: 'DEV_TO', label: '💻 dev.to' },
   { value: 'ARXIV', label: '📄 ArXiv' },
   { value: 'REDDIT', label: '🔴 Reddit' },
+  { value: 'PAPERS_WITH_CODE', label: '🔬 Papers With Code' },
+  { value: 'INFOQ', label: '📰 InfoQ' },
+  { value: 'HUGGING_FACE', label: '🤗 Hugging Face' },
+  { value: 'LOBSTERS', label: '🦞 Lobsters' },
+  { value: 'INSIDE_JAVA', label: '☕ Inside Java' },
+  { value: 'ISOCPP', label: '⚡ isocpp.org' },
+  { value: 'TLDR_AI', label: '📧 TLDR' },
+  { value: 'THE_NEW_STACK', label: '☁️ The New Stack' },
+  { value: 'CNCF', label: '🐳 CNCF' },
+  { value: 'STACKOVERFLOW_BLOG', label: '📚 Stack Overflow' },
+  { value: 'MARTIN_FOWLER', label: '🏗️ Martin Fowler' },
+  { value: 'JETBRAINS', label: '🧠 JetBrains' },
+  { value: 'GEEKNEWS', label: '🇰🇷 GeekNews' },
 ];
 
 interface Props {
