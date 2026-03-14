@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CachingConfigurer;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -17,7 +21,33 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-public class CacheConfig {
+@Slf4j
+public class CacheConfig implements CachingConfigurer {
+
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new SimpleCacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException e, org.springframework.cache.Cache cache, Object key) {
+                log.warn("Redis cache get failed [{}]: {}", cache.getName(), e.getMessage());
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException e, org.springframework.cache.Cache cache, Object key, Object value) {
+                log.warn("Redis cache put failed [{}]: {}", cache.getName(), e.getMessage());
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException e, org.springframework.cache.Cache cache, Object key) {
+                log.warn("Redis cache evict failed [{}]: {}", cache.getName(), e.getMessage());
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException e, org.springframework.cache.Cache cache) {
+                log.warn("Redis cache clear failed [{}]: {}", cache.getName(), e.getMessage());
+            }
+        };
+    }
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
