@@ -35,27 +35,30 @@ public class GeekNewsCrawler extends CrawlerBase {
 
         try {
             Document doc = fetchXml(RSS_URL);
-            Elements items = doc.select("item");
+            Elements entries = doc.select("entry");
 
-            for (Element item : items) {
-                String url = item.select("link").text().trim();
-                if (url.isEmpty()) url = item.select("guid").text().trim();
+            for (Element entry : entries) {
+                // Atom: <link href="..." /> 속성에서 URL 추출
+                String url = entry.select("link[href]").attr("href").trim();
+                if (url.isEmpty()) url = entry.select("id").text().trim();
                 if (url.isEmpty()) continue;
 
                 String urlHash = computeUrlHash(url);
                 if (isDuplicate(urlHash)) continue;
 
-                String title = item.select("title").text().trim();
+                String title = entry.select("title").text().trim();
                 if (title.isEmpty()) continue;
 
-                String description = item.select("description").text().trim();
+                String description = entry.select("summary").text().trim();
+                if (description.isEmpty()) description = entry.select("content").text().trim();
                 if (description.length() > 400) description = description.substring(0, 397) + "...";
 
-                String pubDateStr = item.select("pubDate").text().trim();
+                // Atom: <published> 또는 <updated> (ISO 8601)
+                String pubDateStr = entry.select("published").text().trim();
+                if (pubDateStr.isEmpty()) pubDateStr = entry.select("updated").text().trim();
                 LocalDateTime publishedAt = LocalDateTime.now();
                 try {
-                    publishedAt = ZonedDateTime.parse(pubDateStr,
-                        DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime();
+                    publishedAt = ZonedDateTime.parse(pubDateStr).toLocalDateTime();
                 } catch (Exception ignored) {}
 
                 TrendItem trendItem = TrendItem.builder()
