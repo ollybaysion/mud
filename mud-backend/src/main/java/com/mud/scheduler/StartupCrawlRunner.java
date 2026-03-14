@@ -44,7 +44,7 @@ public class StartupCrawlRunner implements ApplicationRunner {
         log.info("=== 시작 시 초기 크롤링 실행 ===");
         new Thread(() -> {
             try {
-                Thread.sleep(3000);
+                Thread.sleep(30_000);
                 runAllCrawlers();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
