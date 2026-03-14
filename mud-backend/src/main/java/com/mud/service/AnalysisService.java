@@ -38,47 +38,52 @@ public class AnalysisService {
     @Async
     @Transactional
     public void analyzePendingItems() {
-        List<TrendItem> pendingItems = trendItemRepository
-            .findTop20ByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.PENDING);
+        int totalAnalyzed = 0;
 
-        if (pendingItems.isEmpty()) {
-            log.debug("No pending items to analyze");
-            return;
-        }
+        while (true) {
+            List<TrendItem> pendingItems = trendItemRepository
+                .findTop20ByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.PENDING);
 
-        log.info("Starting analysis of {} pending items", pendingItems.size());
-
-        for (TrendItem item : pendingItems) {
-            try {
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
-                trendItemRepository.save(item);
-
-                AnalysisResult result = callClaudeApi(item);
-
-                item.setKoreanSummary(result.koreanSummary());
-                item.setRelevanceScore(result.relevanceScore());
-                item.setKeywords(result.keywords());
-                categoryRepository.findBySlug(result.categorySlug())
-                    .ifPresent(item::setCategory);
-                item.setAnalyzedAt(LocalDateTime.now());
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
-                trendItemRepository.save(item);
-
-                log.debug("Analysis complete for: {}", item.getTitle());
-                Thread.sleep(600); // ~100 requests/min limit headroom
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+            if (pendingItems.isEmpty()) {
                 break;
-            } catch (Exception e) {
-                log.error("Analysis failed for item id={}, title={}: {}",
-                    item.getId(), item.getTitle(), e.getMessage());
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
-                trendItemRepository.save(item);
+            }
+
+            log.info("Analyzing batch of {} pending items (total so far: {})", pendingItems.size(), totalAnalyzed);
+
+            for (TrendItem item : pendingItems) {
+                try {
+                    item.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
+                    trendItemRepository.save(item);
+
+                    AnalysisResult result = callClaudeApi(item);
+
+                    item.setKoreanSummary(result.koreanSummary());
+                    item.setRelevanceScore(result.relevanceScore());
+                    item.setKeywords(result.keywords());
+                    categoryRepository.findBySlug(result.categorySlug())
+                        .ifPresent(item::setCategory);
+                    item.setAnalyzedAt(LocalDateTime.now());
+                    item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
+                    trendItemRepository.save(item);
+
+                    totalAnalyzed++;
+                    log.debug("Analysis complete for: {}", item.getTitle());
+                    Thread.sleep(600);
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.info("Analysis interrupted after {} items", totalAnalyzed);
+                    return;
+                } catch (Exception e) {
+                    log.error("Analysis failed for item id={}, title={}: {}",
+                        item.getId(), item.getTitle(), e.getMessage());
+                    item.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
+                    trendItemRepository.save(item);
+                }
             }
         }
 
-        log.info("Analysis batch complete");
+        log.info("Analysis complete: {} items analyzed", totalAnalyzed);
     }
 
     private AnalysisResult callClaudeApi(TrendItem item) {
@@ -97,7 +102,7 @@ public class AnalysisService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class)
-            .timeout(Duration.ofSeconds(30))
+            .timeout(Duration.ofSeconds(60))
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null");
