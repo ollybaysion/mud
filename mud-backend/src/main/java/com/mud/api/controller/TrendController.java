@@ -19,6 +19,11 @@ public class TrendController {
 
     private final TrendService trendService;
 
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("ok");
+    }
+
     @GetMapping("/trends")
     public ResponseEntity<TrendPageResponse> getTrends(
             @RequestParam(defaultValue = "0") int page,
