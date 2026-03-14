@@ -13,7 +13,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-RUN mkdir -p .next/cache && chown -R mud:mud .next/cache
+RUN chown -R mud:mud .next
 USER mud
 ENV HOSTNAME="0.0.0.0"
 EXPOSE 3000
