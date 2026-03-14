@@ -13,7 +13,7 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
 
     boolean existsByUrlHash(String urlHash);
 
-    List<TrendItem> findTop20ByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus status);
+    List<TrendItem> findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus status);
 
     @Query("""
         SELECT t FROM TrendItem t
