@@ -64,12 +64,12 @@ public class CacheConfig implements CachingConfigurer {
     }
 
     private RedisCacheConfiguration defaultConfig() {
-        // JavaTimeModule + 타입 정보 포함한 ObjectMapper 사용
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
+        mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mapper.activateDefaultTyping(
             LaissezFaireSubTypeValidator.instance,
-            ObjectMapper.DefaultTyping.NON_FINAL,
+            ObjectMapper.DefaultTyping.EVERYTHING,
             JsonTypeInfo.As.PROPERTY
         );
 
