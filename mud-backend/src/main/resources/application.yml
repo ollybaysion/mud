@@ -10,7 +10,7 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:mud}
     password: ${SPRING_DATASOURCE_PASSWORD:mudpassword}
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 15
       minimum-idle: 2
       connection-timeout: 30000
 
@@ -52,6 +52,9 @@ spring:
         max-size: 8
         queue-capacity: 100
       thread-name-prefix: mud-async-
+
+analysis:
+  concurrency: ${ANALYSIS_CONCURRENCY:10}
 
 claude:
   api:
