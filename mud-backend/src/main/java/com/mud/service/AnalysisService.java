@@ -39,14 +39,15 @@ public class AnalysisService {
     @Transactional
     public void analyzePendingItems() {
         List<TrendItem> pendingItems = trendItemRepository
-            .findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.PENDING);
+            .findByAnalysisStatusInOrderByCrawledAtAsc(
+                List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED));
 
         if (pendingItems.isEmpty()) {
-            log.debug("No pending items to analyze");
+            log.debug("No pending or failed items to analyze");
             return;
         }
 
-        log.info("Starting analysis of {} pending items", pendingItems.size());
+        log.info("Starting analysis of {} items (pending + failed)", pendingItems.size());
         int analyzed = 0;
 
         for (TrendItem item : pendingItems) {
