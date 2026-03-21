@@ -274,6 +274,9 @@ public class AnalysisService {
             return item.getDeepAnalysis();
         }
 
+        // 비동기 스레드에서 Hibernate 세션이 없으므로 lazy 컬렉션을 미리 초기화
+        item.getKeywords().size();
+
         CompletableFuture<String> future = inFlightDeepAnalysis.computeIfAbsent(trendItemId, id -> {
             CompletableFuture<String> f = CompletableFuture.supplyAsync(() -> {
                 try {
