@@ -64,7 +64,7 @@ jobs:
 
   deploy-frontend:
     name: Deploy Frontend
-    needs: ci
+    needs: deploy-backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
