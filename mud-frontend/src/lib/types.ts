@@ -19,6 +19,7 @@ export interface TrendItem {
   source: CrawlSource;
   description: string | null;
   koreanSummary: string | null;
+  deepAnalysis: string | null;
   category: Category | null;
   relevanceScore: number | null;
   keywords: string[];

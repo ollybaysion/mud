@@ -5,12 +5,14 @@ import com.mud.dto.response.CategoryResponse;
 import com.mud.dto.response.TrendItemResponse;
 import com.mud.dto.response.TrendPageResponse;
 import com.mud.dto.response.TrendStatsResponse;
+import com.mud.service.AnalysisService;
 import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -18,6 +20,7 @@ import java.util.List;
 public class TrendController {
 
     private final TrendService trendService;
+    private final AnalysisService analysisService;
 
     @GetMapping("/health")
     public ResponseEntity<String> health() {
@@ -48,6 +51,12 @@ public class TrendController {
     @GetMapping("/trends/{id}")
     public ResponseEntity<TrendItemResponse> getTrend(@PathVariable Long id) {
         return ResponseEntity.ok(trendService.getTrendDetail(id));
+    }
+
+    @PostMapping("/trends/{id}/deep-analysis")
+    public ResponseEntity<Map<String, String>> requestDeepAnalysis(@PathVariable Long id) {
+        String analysis = analysisService.generateDeepAnalysis(id);
+        return ResponseEntity.ok(Map.of("deepAnalysis", analysis));
     }
 
     @GetMapping("/categories")

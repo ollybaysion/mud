@@ -9,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -36,6 +38,7 @@ public class AnalysisService {
     private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
     private final PlatformTransactionManager transactionManager;
+    private final CacheManager cacheManager;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -49,8 +52,15 @@ public class AnalysisService {
     @Value("${analysis.batch-size:5}")
     private int batchSize;
 
+    @Value("${claude.api.deep-analysis-model:claude-sonnet-4-6}")
+    private String deepAnalysisModel;
+
+    @Value("${claude.api.deep-analysis-max-tokens:4096}")
+    private int deepAnalysisMaxTokens;
+
     private Semaphore semaphore;
     private ExecutorService executor;
+    private final ConcurrentHashMap<Long, CompletableFuture<String>> inFlightDeepAnalysis = new ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -255,4 +265,104 @@ public class AnalysisService {
         int relevanceScore,
         List<String> keywords
     ) {}
+
+    public String generateDeepAnalysis(Long trendItemId) {
+        TrendItem item = trendItemRepository.findById(trendItemId)
+            .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+
+        if (item.getDeepAnalysis() != null) {
+            return item.getDeepAnalysis();
+        }
+
+        CompletableFuture<String> future = inFlightDeepAnalysis.computeIfAbsent(trendItemId, id -> {
+            CompletableFuture<String> f = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return executeDeepAnalysis(item);
+                } finally {
+                    inFlightDeepAnalysis.remove(id);
+                }
+            }, executor);
+            return f;
+        });
+
+        return future.join();
+    }
+
+    private String executeDeepAnalysis(TrendItem item) {
+        String prompt = buildDeepAnalysisPrompt(item);
+
+        Map<String, Object> requestBody = Map.of(
+            "model", deepAnalysisModel,
+            "max_tokens", deepAnalysisMaxTokens,
+            "messages", List.of(
+                Map.of("role", "user", "content", prompt)
+            )
+        );
+
+        Map<?, ?> response = claudeWebClient.post()
+            .uri("/v1/messages")
+            .bodyValue(requestBody)
+            .retrieve()
+            .bodyToMono(Map.class)
+            .timeout(Duration.ofSeconds(120))
+            .block();
+
+        if (response == null) throw new RuntimeException("Claude API returned null for deep analysis");
+
+        String analysis = extractResponseText(response);
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status -> {
+            TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+            managed.setDeepAnalysis(analysis);
+            trendItemRepository.save(managed);
+        });
+
+        var cache = cacheManager.getCache("trend-detail");
+        if (cache != null) {
+            cache.evict(item.getId());
+        }
+
+        log.info("Deep analysis completed for item {}: {}", item.getId(), item.getTitle());
+        return analysis;
+    }
+
+    private String buildDeepAnalysisPrompt(TrendItem item) {
+        String desc = item.getDescription() != null ? item.getDescription() : "설명 없음";
+        String summary = item.getKoreanSummary() != null ? item.getKoreanSummary() : "요약 없음";
+        String keywords = item.getKeywords() != null ? String.join(", ", item.getKeywords()) : "";
+
+        return """
+            다음 기술 트렌드 항목에 대해 심층 분석을 작성해주세요.
+            반드시 한국어로 작성하고, 마크다운 형식을 사용하세요.
+
+            제목: %s
+            출처: %s
+            원문 URL: %s
+            기존 요약: %s
+            설명: %s
+            키워드: %s
+
+            아래 섹션 구조로 상세하게 분석해주세요:
+
+            ## 기술 개요
+            이 기술/프로젝트/논문이 무엇인지 배경과 함께 상세히 설명
+
+            ## 핵심 내용
+            주요 특징, 기능, 기여점을 bullet point로 정리
+
+            ## 중요성 및 영향
+            이 기술이 업계에 미치는 영향과 왜 중요한지 설명
+
+            ## 실무 적용 가능성
+            현업 개발자가 실제로 어떻게 활용할 수 있는지 구체적 시나리오 제시
+
+            ## 관련 기술
+            함께 알아두면 좋은 관련 기술, 대안, 경쟁 기술 소개
+
+            마크다운 형식으로 깔끔하게 작성하되, 코드블록(```)은 필요한 경우에만 사용하세요.
+            각 섹션은 충분히 상세하게 작성해주세요.
+            """.formatted(item.getTitle(), item.getSource().name(), item.getOriginalUrl(),
+                summary, desc, keywords);
+    }
 }
