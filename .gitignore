@@ -9,6 +9,8 @@ mud-backend/.gradle/
 mud-backend/bin/
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 *.war
 
 # Node / Next.js
