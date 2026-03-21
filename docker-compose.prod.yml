@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: muddb
       POSTGRES_USER: mud
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-mudpassword}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 환경변수를 설정해주세요}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

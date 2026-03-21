@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/muddb}
     username: ${SPRING_DATASOURCE_USERNAME:mud}
-    password: ${SPRING_DATASOURCE_PASSWORD:mudpassword}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
       maximum-pool-size: 15
       minimum-idle: 2
