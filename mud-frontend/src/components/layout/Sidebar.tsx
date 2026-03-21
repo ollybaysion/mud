@@ -28,6 +28,11 @@ export function Sidebar({ categories }: Props) {
               <span>📊</span> 전체 보기
             </Link>
           </li>
+          <li className="category-item">
+            <Link href="/bookmarks">
+              <span>📌</span> 저장한 글
+            </Link>
+          </li>
         </ul>
 
         <div style={{ padding: '12px 20px 6px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>

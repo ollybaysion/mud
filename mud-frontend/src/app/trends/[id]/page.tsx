@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { notFound } from 'next/navigation';
+import { BookmarkButton } from '@/components/ui/BookmarkButton';
 
 const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
   GITHUB: { label: 'GitHub', color: '#e2e8f0', emoji: '🐙' },
@@ -119,15 +120,18 @@ export default async function TrendDetailPage({ params }: Props) {
         </div>
       )}
 
-      <a
-        href={item.originalUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="page-btn"
-        style={{ display: 'inline-block', padding: '10px 20px', background: 'var(--color-accent)', color: '#fff', borderRadius: '6px', fontWeight: 500 }}
-      >
-        원문 보기 →
-      </a>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <a
+          href={item.originalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="page-btn"
+          style={{ display: 'inline-block', padding: '10px 20px', background: 'var(--color-accent)', color: '#fff', borderRadius: '6px', fontWeight: 500 }}
+        >
+          원문 보기 →
+        </a>
+        <BookmarkButton item={item} size="lg" />
+      </div>
     </article>
   );
 }

@@ -311,6 +311,30 @@ a:hover { color: var(--color-accent-hover); }
   color: var(--color-text-muted);
 }
 
+/* Bookmark button */
+.bookmark-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  transition: color 0.15s, background 0.15s;
+  margin-left: auto;
+}
+
+.bookmark-btn:hover {
+  color: var(--color-accent-hover);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.bookmark-btn.bookmarked {
+  color: var(--color-accent);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }
