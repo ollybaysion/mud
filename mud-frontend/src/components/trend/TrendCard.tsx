@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { TrendItem } from '@/lib/types';
+import { BookmarkButton } from '@/components/ui/BookmarkButton';
 
 const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
   GITHUB: { label: 'GitHub', color: '#e2e8f0', emoji: '🐙' },
@@ -71,6 +72,8 @@ export function TrendCard({ item }: Props) {
         {item.githubStars !== null && item.githubStars > 0 && (
           <span className="stars-badge">⭐ {item.githubStars.toLocaleString()}</span>
         )}
+
+        <BookmarkButton item={item} size="sm" />
       </div>
 
       <h3 className="trend-card-title">
