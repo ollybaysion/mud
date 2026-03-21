@@ -46,6 +46,9 @@ public class AnalysisService {
     @Value("${analysis.concurrency:10}")
     private int concurrency;
 
+    @Value("${analysis.batch-size:5}")
+    private int batchSize;
+
     private Semaphore semaphore;
     private ExecutorService executor;
 
@@ -66,66 +69,78 @@ public class AnalysisService {
             return;
         }
 
-        log.info("Starting parallel analysis of {} items (concurrency={})", pendingItems.size(), concurrency);
-        AtomicInteger analyzed = new AtomicInteger();
+        List<List<TrendItem>> batches = partition(pendingItems, batchSize);
+        log.info("Starting batch analysis: {} items in {} batches (batchSize={}, concurrency={})",
+            pendingItems.size(), batches.size(), batchSize, concurrency);
 
-        List<CompletableFuture<Void>> futures = pendingItems.stream()
-            .map(item -> CompletableFuture.runAsync(() -> analyzeItem(item, analyzed, pendingItems.size()), executor))
+        AtomicInteger analyzedBatches = new AtomicInteger();
+
+        List<CompletableFuture<Void>> futures = batches.stream()
+            .map(batch -> CompletableFuture.runAsync(
+                () -> analyzeBatch(batch, analyzedBatches, batches.size()), executor))
             .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        log.info("Analysis complete: {}/{} items analyzed", analyzed.get(), pendingItems.size());
+        log.info("Analysis complete: {}/{} batches processed", analyzedBatches.get(), batches.size());
     }
 
-    private void analyzeItem(TrendItem item, AtomicInteger analyzed, int total) {
+    private void analyzeBatch(List<TrendItem> batch, AtomicInteger analyzedBatches, int totalBatches) {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         try {
             semaphore.acquire();
             try {
                 tx.executeWithoutResult(status -> {
-                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
-                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
-                    trendItemRepository.save(managed);
+                    for (TrendItem item : batch) {
+                        TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
+                        trendItemRepository.save(managed);
+                    }
                 });
 
-                AnalysisResult result = callClaudeApi(item);
+                List<AnalysisResult> results = callClaudeApiBatch(batch);
 
                 tx.executeWithoutResult(status -> {
-                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
-                    managed.setKoreanSummary(result.koreanSummary());
-                    managed.setRelevanceScore(result.relevanceScore());
-                    managed.setKeywords(result.keywords());
-                    categoryRepository.findBySlug(result.categorySlug())
-                        .ifPresent(managed::setCategory);
-                    managed.setAnalyzedAt(LocalDateTime.now());
-                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
-                    trendItemRepository.save(managed);
+                    for (int i = 0; i < batch.size(); i++) {
+                        TrendItem managed = trendItemRepository.findById(batch.get(i).getId()).orElseThrow();
+                        AnalysisResult result = (i < results.size()) ? results.get(i)
+                            : new AnalysisResult("분석 실패", "general", 3, List.of());
+                        managed.setKoreanSummary(result.koreanSummary());
+                        managed.setRelevanceScore(result.relevanceScore());
+                        managed.setKeywords(result.keywords());
+                        categoryRepository.findBySlug(result.categorySlug())
+                            .ifPresent(managed::setCategory);
+                        managed.setAnalyzedAt(LocalDateTime.now());
+                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
+                        trendItemRepository.save(managed);
+                    }
                 });
 
-                int count = analyzed.incrementAndGet();
-                log.debug("Analysis complete ({}/{}): {}", count, total, item.getTitle());
+                int count = analyzedBatches.incrementAndGet();
+                log.debug("Batch complete ({}/{}): {} items", count, totalBatches, batch.size());
             } finally {
                 semaphore.release();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (Exception e) {
-            log.error("Analysis failed for item id={}, title={}: {}", item.getId(), item.getTitle(), e.getMessage());
+            log.error("Batch analysis failed: {}", e.getMessage());
             try {
                 tx.executeWithoutResult(status -> {
-                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
-                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
-                    trendItemRepository.save(managed);
+                    for (TrendItem item : batch) {
+                        TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
+                        trendItemRepository.save(managed);
+                    }
                 });
             } catch (Exception ex) {
-                log.error("Failed to mark item {} as FAILED: {}", item.getId(), ex.getMessage());
+                log.error("Failed to mark batch as FAILED: {}", ex.getMessage());
             }
         }
     }
 
-    private AnalysisResult callClaudeApi(TrendItem item) {
-        String prompt = buildPrompt(item);
+    private List<AnalysisResult> callClaudeApiBatch(List<TrendItem> batch) {
+        String prompt = buildBatchPrompt(batch);
 
         Map<String, Object> requestBody = Map.of(
             "model", claudeModel,
@@ -140,32 +155,39 @@ public class AnalysisService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class)
-            .timeout(Duration.ofSeconds(60))
+            .timeout(Duration.ofSeconds(120))
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null");
 
         String text = extractResponseText(response);
-        return parseAnalysisResult(text);
+        return parseBatchResult(text, batch.size());
     }
 
-    private String buildPrompt(TrendItem item) {
-        String desc = item.getDescription() != null ? item.getDescription() : "설명 없음";
+    private String buildBatchPrompt(List<TrendItem> batch) {
+        StringBuilder items = new StringBuilder();
+        for (int i = 0; i < batch.size(); i++) {
+            TrendItem item = batch.get(i);
+            String desc = item.getDescription() != null ? item.getDescription() : "설명 없음";
+            items.append("항목 %d:\n제목: %s\n출처: %s\n설명: %s\n\n"
+                .formatted(i + 1, item.getTitle(), item.getSource().name(), desc));
+        }
+
         return """
-            다음 기술 트렌드 항목을 분석하고, 반드시 아래 JSON 형식으로만 응답하세요.
+            다음 %d개의 기술 트렌드 항목을 분석하고, 반드시 아래 JSON 배열 형식으로만 응답하세요.
             JSON 외의 다른 텍스트, 마크다운 코드블록은 포함하지 마세요.
+            항목 순서대로 결과를 배열에 담아주세요.
 
-            제목: %s
-            출처: %s
-            설명: %s
-
+            %s
             응답 JSON 형식:
-            {
-              "koreanSummary": "현업 개발자 관점에서 2-3문장으로 핵심을 요약 (한국어로 작성)",
-              "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 general 중 하나",
-              "relevanceScore": 1부터 5 사이의 정수,
-              "keywords": ["키워드1", "키워드2", "키워드3"]
-            }
+            [
+              {
+                "koreanSummary": "현업 개발자 관점에서 2-3문장으로 핵심을 요약 (한국어로 작성)",
+                "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 general 중 하나",
+                "relevanceScore": 1부터 5 사이의 정수,
+                "keywords": ["키워드1", "키워드2", "키워드3"]
+              }
+            ]
 
             relevanceScore 기준:
             5 = 즉시 실무에 적용 가능한 핵심 기술
@@ -173,7 +195,7 @@ public class AnalysisService {
             3 = 관심 분야라면 볼만한 내용
             2 = 참고 수준의 정보
             1 = 현업 개발자 관련성 낮음
-            """.formatted(item.getTitle(), item.getSource().name(), desc);
+            """.formatted(batch.size(), items);
     }
 
     @SuppressWarnings("unchecked")
@@ -186,33 +208,45 @@ public class AnalysisService {
         return (String) firstBlock.get("text");
     }
 
-    private AnalysisResult parseAnalysisResult(String text) {
+    private List<AnalysisResult> parseBatchResult(String text, int expectedSize) {
         try {
-            // Strip any accidental markdown code fences
             String json = text.trim()
                 .replaceAll("^```json\\s*", "")
                 .replaceAll("^```\\s*", "")
                 .replaceAll("\\s*```$", "")
                 .trim();
 
-            JsonNode node = objectMapper.readTree(json);
-
-            String koreanSummary = node.path("koreanSummary").asText("요약 없음");
-            String categorySlug = node.path("categorySlug").asText("general");
-            int relevanceScore = node.path("relevanceScore").asInt(3);
-            relevanceScore = Math.max(1, Math.min(5, relevanceScore));
-
-            List<String> keywords = new ArrayList<>();
-            JsonNode kwNode = node.path("keywords");
-            if (kwNode.isArray()) {
-                kwNode.forEach(kw -> keywords.add(kw.asText()));
+            JsonNode arrayNode = objectMapper.readTree(json);
+            if (!arrayNode.isArray()) {
+                log.warn("Expected JSON array but got: {}", json);
+                return List.of();
             }
 
-            return new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords);
+            List<AnalysisResult> results = new ArrayList<>();
+            for (JsonNode node : arrayNode) {
+                String koreanSummary = node.path("koreanSummary").asText("요약 없음");
+                String categorySlug = node.path("categorySlug").asText("general");
+                int relevanceScore = Math.max(1, Math.min(5, node.path("relevanceScore").asInt(3)));
+                List<String> keywords = new ArrayList<>();
+                JsonNode kwNode = node.path("keywords");
+                if (kwNode.isArray()) {
+                    kwNode.forEach(kw -> keywords.add(kw.asText()));
+                }
+                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords));
+            }
+            return results;
         } catch (Exception e) {
-            log.warn("Failed to parse Claude response: {}. Text was: {}", e.getMessage(), text);
-            return new AnalysisResult("분석 실패", "general", 3, List.of());
+            log.warn("Failed to parse batch Claude response: {}. Text was: {}", e.getMessage(), text);
+            return List.of();
         }
+    }
+
+    private <T> List<List<T>> partition(List<T> list, int size) {
+        List<List<T>> partitions = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            partitions.add(list.subList(i, Math.min(i + size, list.size())));
+        }
+        return partitions;
     }
 
     record AnalysisResult(
