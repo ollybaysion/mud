@@ -9,8 +9,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Ops 승인 없이 머지된 직접 push 방지 (branch protection 우회 대비)
+  verify-ops-gate:
+    name: Verify Ops Approval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read
+    steps:
+      - name: Check merge commit for Ops approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA=${{ github.sha }}
+
+          # 머지 커밋에서 PR 번호 추출
+          PR_NUMBER=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/pulls \
+            -q '.[0].number' 2>/dev/null || echo "")
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "⚠️ PR 없이 직접 push된 커밋. Ops gate 건너뜀 (hotfix 등)"
+            exit 0
+          fi
+
+          echo "PR #$PR_NUMBER 에 대한 ops-gate 상태 확인..."
+
+          # PR의 head SHA에서 ops-gate status 확인
+          HEAD_SHA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefOid -q '.headRefOid')
+          OPS_STATUS=$(gh api repos/${{ github.repository }}/commits/$HEAD_SHA/statuses \
+            -q '[.[] | select(.context == "ops-gate/approval")] | .[0].state' 2>/dev/null || echo "")
+
+          if [ "$OPS_STATUS" = "success" ]; then
+            echo "✅ Ops 승인 확인됨. 배포 진행."
+          else
+            echo "🚫 Ops 승인이 없는 PR이 머지되었습니다. 배포를 차단합니다."
+            echo "ops-gate status: $OPS_STATUS"
+            exit 1
+          fi
+
   deploy-backend:
     name: Deploy Backend
+    needs: verify-ops-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

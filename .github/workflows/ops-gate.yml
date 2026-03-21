@@ -1,0 +1,113 @@
+name: Ops Deployment Gate
+
+on:
+  pull_request:
+    branches: [main]
+  issue_comment:
+    types: [created]
+
+jobs:
+  ops-approval:
+    name: Ops Agent Approval Check
+    runs-on: ubuntu-latest
+
+    # issue_comment 이벤트 시: PR에 연결된 이슈 코멘트일 때만 실행
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request)
+
+    permissions:
+      pull-requests: read
+      issues: read
+      statuses: write
+
+    steps:
+      - name: Get PR info
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUMBER=${{ github.event.pull_request.number }}
+            PR_BODY=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json body -q '.body')
+            HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            PR_NUMBER=${{ github.event.issue.number }}
+            PR_BODY=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json body -q '.body')
+            HEAD_SHA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefOid -q '.headRefOid')
+          fi
+
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+          # PR body에서 연결된 이슈 번호 추출 (Closes #XX, Fixes #XX, Resolves #XX)
+          ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oiP '(?:closes|fixes|resolves)\s+#\K\d+' | tr '\n' ' ')
+          echo "issue_numbers=$ISSUE_NUMBERS" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$ISSUE_NUMBERS" ]; then
+            echo "no_linked_issue=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Ops approval on linked issues
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.pr.outputs.no_linked_issue }}" = "true" ]; then
+            echo "⚠️ PR에 연결된 이슈가 없습니다. PR 코멘트에서 Ops 승인을 확인합니다."
+            # 이슈가 없으면 PR 자체 코멘트에서 확인
+            APPROVED=$(gh pr view ${{ steps.pr.outputs.pr_number }} \
+              --repo ${{ github.repository }} \
+              --json comments -q '.comments[].body' | grep -c '✅ \[Ops\]' || true)
+
+            if [ "$APPROVED" -gt 0 ]; then
+              echo "approved=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "approved=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          APPROVED=false
+          for ISSUE_NUM in ${{ steps.pr.outputs.issue_numbers }}; do
+            echo "Checking issue #$ISSUE_NUM for Ops approval..."
+
+            COMMENT_COUNT=$(gh issue view "$ISSUE_NUM" \
+              --repo ${{ github.repository }} \
+              --json comments -q '.comments[].body' | grep -c '✅ \[Ops\]' || true)
+
+            if [ "$COMMENT_COUNT" -gt 0 ]; then
+              echo "✅ Issue #$ISSUE_NUM has Ops approval"
+              APPROVED=true
+              break
+            else
+              echo "❌ Issue #$ISSUE_NUM has no Ops approval"
+            fi
+          done
+
+          echo "approved=$APPROVED" >> "$GITHUB_OUTPUT"
+
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ steps.check.outputs.approved }}" = "true" ]; then
+            echo "✅ Ops Agent 배포 승인 확인됨"
+            # commit status 업데이트
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+              -f state=success \
+              -f description="Ops Agent 배포 승인 확인됨" \
+              -f context="ops-gate/approval"
+          else
+            echo "🚫 Ops Agent 배포 승인 없음 — 머지 차단"
+            echo ""
+            echo "배포하려면 연결된 이슈에 Ops Agent의 '✅ [Ops]' 코멘트가 필요합니다."
+            echo "검증 요청: Ops Agent에게 배포 검증을 요청하세요."
+
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+              -f state=failure \
+              -f description="Ops Agent 배포 승인 필요" \
+              -f context="ops-gate/approval"
+
+            exit 1
+          fi
