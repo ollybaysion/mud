@@ -267,15 +267,19 @@ public class AnalysisService {
     ) {}
 
     public String generateDeepAnalysis(Long trendItemId) {
-        TrendItem item = trendItemRepository.findById(trendItemId)
-            .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+        TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+        txRead.setReadOnly(true);
+        TrendItem item = txRead.execute(status -> {
+            TrendItem i = trendItemRepository.findById(trendItemId)
+                .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+            // 비동기 스레드에서 Hibernate 세션이 없으므로 lazy 컬렉션을 미리 초기화
+            i.getKeywords().size();
+            return i;
+        });
 
         if (item.getDeepAnalysis() != null) {
             return item.getDeepAnalysis();
         }
-
-        // 비동기 스레드에서 Hibernate 세션이 없으므로 lazy 컬렉션을 미리 초기화
-        item.getKeywords().size();
 
         CompletableFuture<String> future = inFlightDeepAnalysis.computeIfAbsent(trendItemId, id -> {
             CompletableFuture<String> f = CompletableFuture.supplyAsync(() -> {
