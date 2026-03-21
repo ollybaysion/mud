@@ -335,6 +335,68 @@ a:hover { color: var(--color-accent-hover); }
   color: var(--color-accent);
 }
 
+/* Deep Analysis */
+.deep-analysis-content h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--color-text);
+}
+
+.deep-analysis-content h2:first-child {
+  margin-top: 0;
+}
+
+.deep-analysis-content p {
+  margin-bottom: 10px;
+  color: var(--color-text-muted);
+}
+
+.deep-analysis-content ul,
+.deep-analysis-content ol {
+  margin-bottom: 10px;
+  padding-left: 20px;
+  color: var(--color-text-muted);
+}
+
+.deep-analysis-content li {
+  margin-bottom: 4px;
+}
+
+.deep-analysis-content strong {
+  color: var(--color-text);
+}
+
+.deep-analysis-content code {
+  background: var(--color-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+.deep-analysis-content pre {
+  background: var(--color-bg);
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+}
+
+.deep-analysis-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #a855f744;
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); }

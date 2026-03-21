@@ -49,6 +49,9 @@ public class TrendItem {
     @Column(columnDefinition = "TEXT")
     private String koreanSummary;
 
+    @Column(columnDefinition = "TEXT")
+    private String deepAnalysis;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
