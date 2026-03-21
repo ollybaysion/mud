@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 import type { TrendItem } from '@/lib/types';
+import { requestDeepAnalysis } from '@/lib/actions';
 
 interface Props {
   item: TrendItem;
@@ -17,14 +18,11 @@ export function DeepAnalysisSection({ item }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/trends/${item.id}/deep-analysis`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        throw new Error(`분석 요청 실패 (${res.status})`);
+      const result = await requestDeepAnalysis(item.id);
+      if (result.error) {
+        throw new Error(result.error);
       }
-      const data = await res.json();
-      setAnalysis(data.deepAnalysis);
+      setAnalysis(result.deepAnalysis);
     } catch (e) {
       setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.');
     } finally {
