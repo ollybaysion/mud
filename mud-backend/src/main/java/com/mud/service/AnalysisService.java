@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mud.domain.entity.TrendItem;
 import com.mud.domain.repository.CategoryRepository;
 import com.mud.domain.repository.TrendItemRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
@@ -18,6 +20,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
@@ -28,6 +35,7 @@ public class AnalysisService {
     private final TrendItemRepository trendItemRepository;
     private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -35,8 +43,19 @@ public class AnalysisService {
     @Value("${claude.api.max-tokens}")
     private int maxTokens;
 
+    @Value("${analysis.concurrency:10}")
+    private int concurrency;
+
+    private Semaphore semaphore;
+    private ExecutorService executor;
+
+    @PostConstruct
+    void init() {
+        semaphore = new Semaphore(concurrency);
+        executor = Executors.newVirtualThreadPerTaskExecutor();
+    }
+
     @Async
-    @Transactional
     public void analyzePendingItems() {
         List<TrendItem> pendingItems = trendItemRepository
             .findByAnalysisStatusInOrderByCrawledAtAsc(
@@ -47,42 +66,62 @@ public class AnalysisService {
             return;
         }
 
-        log.info("Starting analysis of {} items (pending + failed)", pendingItems.size());
-        int analyzed = 0;
+        log.info("Starting parallel analysis of {} items (concurrency={})", pendingItems.size(), concurrency);
+        AtomicInteger analyzed = new AtomicInteger();
 
-        for (TrendItem item : pendingItems) {
+        List<CompletableFuture<Void>> futures = pendingItems.stream()
+            .map(item -> CompletableFuture.runAsync(() -> analyzeItem(item, analyzed, pendingItems.size()), executor))
+            .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        log.info("Analysis complete: {}/{} items analyzed", analyzed.get(), pendingItems.size());
+    }
+
+    private void analyzeItem(TrendItem item, AtomicInteger analyzed, int total) {
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        try {
+            semaphore.acquire();
             try {
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
-                trendItemRepository.save(item);
+                tx.executeWithoutResult(status -> {
+                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
+                    trendItemRepository.save(managed);
+                });
 
                 AnalysisResult result = callClaudeApi(item);
 
-                item.setKoreanSummary(result.koreanSummary());
-                item.setRelevanceScore(result.relevanceScore());
-                item.setKeywords(result.keywords());
-                categoryRepository.findBySlug(result.categorySlug())
-                    .ifPresent(item::setCategory);
-                item.setAnalyzedAt(LocalDateTime.now());
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
-                trendItemRepository.save(item);
+                tx.executeWithoutResult(status -> {
+                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+                    managed.setKoreanSummary(result.koreanSummary());
+                    managed.setRelevanceScore(result.relevanceScore());
+                    managed.setKeywords(result.keywords());
+                    categoryRepository.findBySlug(result.categorySlug())
+                        .ifPresent(managed::setCategory);
+                    managed.setAnalyzedAt(LocalDateTime.now());
+                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
+                    trendItemRepository.save(managed);
+                });
 
-                analyzed++;
-                log.debug("Analysis complete ({}/{}): {}", analyzed, pendingItems.size(), item.getTitle());
-                Thread.sleep(600);
-
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.info("Analysis interrupted after {}/{} items", analyzed, pendingItems.size());
-                return;
-            } catch (Exception e) {
-                log.error("Analysis failed for item id={}, title={}: {}",
-                    item.getId(), item.getTitle(), e.getMessage());
-                item.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
-                trendItemRepository.save(item);
+                int count = analyzed.incrementAndGet();
+                log.debug("Analysis complete ({}/{}): {}", count, total, item.getTitle());
+            } finally {
+                semaphore.release();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.error("Analysis failed for item id={}, title={}: {}", item.getId(), item.getTitle(), e.getMessage());
+            try {
+                tx.executeWithoutResult(status -> {
+                    TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
+                    managed.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
+                    trendItemRepository.save(managed);
+                });
+            } catch (Exception ex) {
+                log.error("Failed to mark item {} as FAILED: {}", item.getId(), ex.getMessage());
             }
         }
-
-        log.info("Analysis complete: {}/{} items analyzed", analyzed, pendingItems.size());
     }
 
     private AnalysisResult callClaudeApi(TrendItem item) {
