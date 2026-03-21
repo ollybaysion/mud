@@ -311,7 +311,7 @@ public class AnalysisService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class)
-            .timeout(Duration.ofSeconds(120))
+            .timeout(Duration.ofSeconds(240))
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null for deep analysis");
