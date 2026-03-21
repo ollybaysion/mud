@@ -46,4 +46,5 @@ export const api = {
 
   getStats: () =>
     apiFetch<TrendStats>('/api/stats', undefined, 300),
+
 };
