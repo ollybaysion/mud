@@ -87,27 +87,78 @@ jobs:
 
           echo "approved=$APPROVED" >> "$GITHUB_OUTPUT"
 
-      - name: Report result
+      - name: Check Code Review approval
+        id: review
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          PR_NUM=${{ steps.pr.outputs.pr_number }}
+
+          # PR comments에서 확인
+          COMMENT_MATCH=$(gh pr view $PR_NUM \
+            --repo ${{ github.repository }} \
+            --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+
+          # PR reviews에서도 확인 (gh pr review --approve 사용 시)
+          REVIEW_MATCH=$(gh pr view $PR_NUM \
+            --repo ${{ github.repository }} \
+            --json reviews -q '.reviews[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+
+          if [ "$COMMENT_MATCH" -gt 0 ] || [ "$REVIEW_MATCH" -gt 0 ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 연결된 이슈에서도 확인
+          if [ "${{ steps.pr.outputs.no_linked_issue }}" != "true" ]; then
+            for ISSUE_NUM in ${{ steps.pr.outputs.issue_numbers }}; do
+              ISSUE_MATCH=$(gh issue view "$ISSUE_NUM" \
+                --repo ${{ github.repository }} \
+                --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+              if [ "$ISSUE_MATCH" -gt 0 ]; then
+                echo "approved=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+          fi
+
+          echo "approved=false" >> "$GITHUB_OUTPUT"
+
+      - name: Report results
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Ops gate
           if [ "${{ steps.check.outputs.approved }}" = "true" ]; then
             echo "✅ Ops Agent 배포 승인 확인됨"
-            # commit status 업데이트
             gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
               -f state=success \
               -f description="Ops Agent 배포 승인 확인됨" \
               -f context="ops-gate/approval"
           else
             echo "🚫 Ops Agent 배포 승인 없음 — 머지 차단"
-            echo ""
-            echo "배포하려면 연결된 이슈에 Ops Agent의 '✅ [Ops]' 코멘트가 필요합니다."
-            echo "검증 요청: Ops Agent에게 배포 검증을 요청하세요."
-
             gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
               -f state=failure \
               -f description="Ops Agent 배포 승인 필요" \
               -f context="ops-gate/approval"
+          fi
 
+          # Code Review gate
+          if [ "${{ steps.review.outputs.approved }}" = "true" ]; then
+            echo "✅ Code Review 승인 확인됨"
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+              -f state=success \
+              -f description="Code Review 승인 확인됨" \
+              -f context="code-review/approval"
+          else
+            echo "🔍 Code Review 승인 없음"
+            gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+              -f state=failure \
+              -f description="Code Review 승인 필요" \
+              -f context="code-review/approval"
+          fi
+
+          # 둘 다 통과해야 성공
+          if [ "${{ steps.check.outputs.approved }}" != "true" ] || [ "${{ steps.review.outputs.approved }}" != "true" ]; then
             exit 1
           fi
