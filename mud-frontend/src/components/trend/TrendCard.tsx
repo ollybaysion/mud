@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { TrendItem } from '@/lib/types';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
-import { sanitizeUrl } from '@/lib/url';
+import { relativeTime } from '@/lib/time';
 import { SOURCE_CONFIG, SCORE_COLORS } from '@/constants/sources';
 
 interface Props {
@@ -15,10 +15,7 @@ export function TrendCard({ item }: Props) {
     : '#64748b';
 
   const dateStr = item.publishedAt ?? item.crawledAt;
-  const displayDate = new Date(dateStr).toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-  });
+  const displayDate = relativeTime(dateStr);
 
   return (
     <article
@@ -56,9 +53,9 @@ export function TrendCard({ item }: Props) {
       </div>
 
       <h3 className="trend-card-title">
-        <a href={sanitizeUrl(item.originalUrl)} target="_blank" rel="noopener noreferrer">
+        <Link href={`/trends/${item.id}`}>
           {item.title}
-        </a>
+        </Link>
       </h3>
 
       {item.koreanSummary && (
