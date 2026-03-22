@@ -3,6 +3,7 @@ package com.mud.scheduler;
 import com.mud.scheduler.jobs.AllSourcesCrawlJob;
 import com.mud.scheduler.jobs.GitHubCrawlJob;
 import com.mud.scheduler.jobs.HackerNewsCrawlJob;
+import com.mud.scheduler.jobs.WeeklyReportJob;
 import org.quartz.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -61,6 +62,24 @@ public class CrawlerScheduler {
             .forJob(allSourcesJobDetail)
             .withIdentity("allSourcesTrigger")
             .withSchedule(CronScheduleBuilder.cronSchedule("0 10/30 * * * ?"))
+            .build();
+    }
+
+    // Weekly Report - every Sunday 16:00 UTC (Monday 01:00 KST)
+    @Bean
+    public JobDetail weeklyReportJobDetail() {
+        return JobBuilder.newJob(WeeklyReportJob.class)
+            .withIdentity("weeklyReportJob")
+            .storeDurably()
+            .build();
+    }
+
+    @Bean
+    public Trigger weeklyReportTrigger(JobDetail weeklyReportJobDetail) {
+        return TriggerBuilder.newTrigger()
+            .forJob(weeklyReportJobDetail)
+            .withIdentity("weeklyReportTrigger")
+            .withSchedule(CronScheduleBuilder.cronSchedule("0 0 16 ? * SUN"))
             .build();
     }
 }

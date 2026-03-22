@@ -57,6 +57,7 @@ public class CacheConfig implements CachingConfigurer {
         cacheConfigs.put("trend-detail", defaultConfig().entryTtl(Duration.ofMinutes(30)));
         cacheConfigs.put("categories",   defaultConfig().entryTtl(Duration.ofHours(1)));
         cacheConfigs.put("stats",        defaultConfig().entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("weekly-report", defaultConfig().entryTtl(Duration.ofHours(6)));
 
         return RedisCacheManager.builder(connectionFactory)
             .withInitialCacheConfigurations(cacheConfigs)
