@@ -9,9 +9,9 @@ export function TrendGrid({ items }: Props) {
   if (items.length === 0) {
     return (
       <div className="empty-state">
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌊</div>
-        <p>트렌드 데이터가 없습니다.</p>
-        <p style={{ fontSize: '12px', marginTop: '8px' }}>크롤러가 데이터를 수집하는 중입니다.</p>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+        <p>조건에 맞는 트렌드가 없습니다.</p>
+        <p style={{ fontSize: '12px', marginTop: '8px' }}>필터를 변경하거나 다른 카테고리를 선택해보세요.</p>
       </div>
     );
   }
