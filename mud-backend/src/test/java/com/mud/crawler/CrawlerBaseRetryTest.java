@@ -10,7 +10,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,53 +26,24 @@ class CrawlerBaseRetryTest {
         @Override public List<TrendItem> crawl() { return List.of(); }
     }
 
-    @FunctionalInterface
-    interface FetchAction {
-        Document execute() throws IOException;
-    }
-
-    private Document invokeRetry(CrawlerBase crawler, FetchAction action, String url) throws Exception {
-        // Access the private FetchAction interface and fetchWithRetry method
-        Class<?>[] innerClasses = CrawlerBase.class.getDeclaredClasses();
-        Class<?> fetchActionClass = null;
-        for (Class<?> c : innerClasses) {
-            if (c.getSimpleName().equals("FetchAction")) {
-                fetchActionClass = c;
-                break;
-            }
-        }
-
-        Method fetchWithRetry = CrawlerBase.class.getDeclaredMethod("fetchWithRetry", fetchActionClass, String.class);
-        fetchWithRetry.setAccessible(true);
-
-        // Create proxy for the inner FetchAction interface
-        Object proxy = java.lang.reflect.Proxy.newProxyInstance(
-            fetchActionClass.getClassLoader(),
-            new Class<?>[]{fetchActionClass},
-            (p, method, args) -> action.execute()
-        );
-
-        return (Document) fetchWithRetry.invoke(crawler, proxy, url);
-    }
-
     @Test
     @DisplayName("첫 시도 성공 → 즉시 반환")
-    void successOnFirstAttempt() throws Exception {
+    void successOnFirstAttempt() throws IOException {
         TestCrawler crawler = new TestCrawler(trendItemRepository);
         Document doc = new Document("https://example.com");
 
-        Document result = invokeRetry(crawler, () -> doc, "https://example.com");
+        Document result = crawler.fetchWithRetry(() -> doc, "https://example.com");
         assertThat(result).isSameAs(doc);
     }
 
     @Test
     @DisplayName("2회 실패 후 3회째 성공")
-    void successAfterRetries() throws Exception {
+    void successAfterRetries() throws IOException {
         TestCrawler crawler = new TestCrawler(trendItemRepository);
         Document doc = new Document("https://example.com");
         AtomicInteger attempts = new AtomicInteger(0);
 
-        Document result = invokeRetry(crawler, () -> {
+        Document result = crawler.fetchWithRetry(() -> {
             if (attempts.incrementAndGet() < 3) {
                 throw new IOException("timeout");
             }
@@ -90,11 +60,10 @@ class CrawlerBaseRetryTest {
         TestCrawler crawler = new TestCrawler(trendItemRepository);
         AtomicInteger attempts = new AtomicInteger(0);
 
-        assertThatThrownBy(() -> invokeRetry(crawler, () -> {
+        assertThatThrownBy(() -> crawler.fetchWithRetry(() -> {
             attempts.incrementAndGet();
             throw new IOException("connection refused");
-        }, "https://example.com"))
-            .hasCauseInstanceOf(IOException.class);
+        }, "https://example.com")).isInstanceOf(IOException.class);
 
         assertThat(attempts.get()).isEqualTo(3);
     }

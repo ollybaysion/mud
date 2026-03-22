@@ -28,10 +28,13 @@ class TrendItemTest {
     @Test
     @DisplayName("CrawlSource enum — 모든 값 유효")
     void allCrawlSourcesValid() {
-        assertThat(TrendItem.CrawlSource.values().length).isGreaterThanOrEqualTo(28);
-        assertThat(TrendItem.CrawlSource.valueOf("GITHUB")).isEqualTo(TrendItem.CrawlSource.GITHUB);
-        assertThat(TrendItem.CrawlSource.valueOf("NVIDIA_BLOG")).isEqualTo(TrendItem.CrawlSource.NVIDIA_BLOG);
-        assertThat(TrendItem.CrawlSource.valueOf("PHORONIX")).isEqualTo(TrendItem.CrawlSource.PHORONIX);
+        assertThat(TrendItem.CrawlSource.values()).contains(
+            TrendItem.CrawlSource.GITHUB,
+            TrendItem.CrawlSource.HACKER_NEWS,
+            TrendItem.CrawlSource.NVIDIA_BLOG,
+            TrendItem.CrawlSource.PHORONIX,
+            TrendItem.CrawlSource.HACKADAY
+        );
     }
 
     @Test

@@ -52,6 +52,7 @@ class SecurityConfigTest {
         mockMvc.perform(options("/api/trends")
                 .header("Origin", "http://evil.com")
                 .header("Access-Control-Request-Method", "GET"))
+            .andExpect(status().isForbidden())
             .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }

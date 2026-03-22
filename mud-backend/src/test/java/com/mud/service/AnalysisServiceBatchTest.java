@@ -2,48 +2,44 @@ package com.mud.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mud.domain.entity.TrendItem;
-import org.junit.jupiter.api.BeforeEach;
+import com.mud.domain.repository.CategoryRepository;
+import com.mud.domain.repository.TrendItemRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
+import org.springframework.integration.redis.util.RedisLockRegistry;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@ExtendWith(MockitoExtension.class)
 class AnalysisServiceBatchTest {
 
-    private Object service;
-    private Method callClaudeApiBatch;
+    @Mock private WebClient claudeWebClient;
+    @Mock private TrendItemRepository trendItemRepository;
+    @Mock private CategoryRepository categoryRepository;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock private PlatformTransactionManager transactionManager;
+    @Mock private CacheManager cacheManager;
+    @Mock private TrendService trendService;
+    @Mock private RedisLockRegistry redisLockRegistry;
 
-    @BeforeEach
-    void setUp() throws Exception {
-        var constructor = AnalysisService.class.getDeclaredConstructors()[0];
-        constructor.setAccessible(true);
-        // WebClient is null — callClaudeApiBatch will NPE, but we test extractResponseText and parseBatchResult indirectly
-        service = constructor.newInstance(null, null, null, new ObjectMapper(), null, null, null, null);
-    }
-
-    private TrendItem createItem(Long id, String title) {
-        return TrendItem.builder()
-            .id(id).title(title)
-            .originalUrl("https://example.com/" + id)
-            .urlHash("hash" + id)
-            .source(TrendItem.CrawlSource.GITHUB)
-            .description("desc")
-            .crawledAt(LocalDateTime.now())
-            .build();
-    }
+    @InjectMocks private AnalysisService service;
 
     @Test
     @DisplayName("parseBatchResult — 여러 아이템 파싱")
-    void parseMultipleItems() throws Exception {
-        Method parse = AnalysisService.class.getDeclaredMethod("parseBatchResult", String.class, int.class);
-        parse.setAccessible(true);
-
+    void parseMultipleItems() {
         String json = """
             [
               {"koreanSummary": "요약1", "categorySlug": "ai-ml", "relevanceScore": 5, "keywords": ["AI"]},
@@ -51,50 +47,41 @@ class AnalysisServiceBatchTest {
               {"koreanSummary": "요약3", "categorySlug": "devops", "relevanceScore": 4, "keywords": ["K8s", "Docker"]}
             ]
             """;
-
-        List<?> results = (List<?>) parse.invoke(service, json, 3);
+        List<?> results = ReflectionTestUtils.invokeMethod(service, "parseBatchResult", json, 3);
         assertThat(results).hasSize(3);
     }
 
     @Test
     @DisplayName("parseBatchResult — 빈 keywords 배열")
-    void parseEmptyKeywords() throws Exception {
-        Method parse = AnalysisService.class.getDeclaredMethod("parseBatchResult", String.class, int.class);
-        parse.setAccessible(true);
-
+    void parseEmptyKeywords() {
         String json = """
             [{"koreanSummary": "요약", "categorySlug": "general", "relevanceScore": 2, "keywords": []}]
             """;
-
-        List<?> results = (List<?>) parse.invoke(service, json, 1);
+        List<?> results = ReflectionTestUtils.invokeMethod(service, "parseBatchResult", json, 1);
         assertThat(results).hasSize(1);
     }
 
     @Test
     @DisplayName("extractResponseText — 여러 content 블록 중 첫 번째 사용")
-    void extractFirstContentBlock() throws Exception {
-        Method extract = AnalysisService.class.getDeclaredMethod("extractResponseText", Map.class);
-        extract.setAccessible(true);
-
+    void extractFirstContentBlock() {
         Map<String, Object> response = Map.of(
             "content", List.of(
                 Map.of("type", "text", "text", "첫 번째"),
                 Map.of("type", "text", "text", "두 번째")
             )
         );
-
-        String result = (String) extract.invoke(service, response);
+        String result = ReflectionTestUtils.invokeMethod(service, "extractResponseText", response);
         assertThat(result).isEqualTo("첫 번째");
     }
 
     @Test
     @DisplayName("buildBatchPrompt — CrawlSource 이름 포함")
-    void batchPromptIncludesSource() throws Exception {
-        Method build = AnalysisService.class.getDeclaredMethod("buildBatchPrompt", List.class);
-        build.setAccessible(true);
-
-        TrendItem item = createItem(1L, "GitHub Trending");
-        String prompt = (String) build.invoke(service, List.of(item));
+    void batchPromptIncludesSource() {
+        TrendItem item = TrendItem.builder()
+            .id(1L).title("GitHub Trending").originalUrl("https://example.com/1")
+            .urlHash("hash1").source(TrendItem.CrawlSource.GITHUB).description("desc")
+            .crawledAt(LocalDateTime.now()).build();
+        String prompt = ReflectionTestUtils.invokeMethod(service, "buildBatchPrompt", List.of(item));
         assertThat(prompt).contains("GITHUB");
     }
 }

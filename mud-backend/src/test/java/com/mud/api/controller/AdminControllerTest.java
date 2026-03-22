@@ -16,8 +16,7 @@ import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,21 +38,25 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/admin/crawl — 유효한 키 → 200")
+    @DisplayName("POST /api/admin/crawl — 유효한 키 → 200 + 서비스 호출")
     void crawlWithAuth() throws Exception {
         mockMvc.perform(post("/api/admin/crawl")
                 .header("X-API-Key", "test-secret"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").exists());
+
+        verify(crawlRunner).runAllCrawlersAsync();
     }
 
     @Test
-    @DisplayName("POST /api/admin/analyze — 유효한 키 → 200")
+    @DisplayName("POST /api/admin/analyze — 유효한 키 → 200 + 서비스 호출")
     void analyzeWithAuth() throws Exception {
         mockMvc.perform(post("/api/admin/analyze")
                 .header("X-API-Key", "test-secret"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").exists());
+
+        verify(analysisService).analyzePendingItems();
     }
 
     @Test

@@ -46,7 +46,7 @@ public abstract class CrawlerBase {
             .get(), url);
     }
 
-    private Document fetchWithRetry(FetchAction action, String url) throws IOException {
+    Document fetchWithRetry(FetchAction action, String url) throws IOException {
         IOException lastException = null;
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -73,7 +73,7 @@ public abstract class CrawlerBase {
     }
 
     @FunctionalInterface
-    private interface FetchAction {
+    interface FetchAction {
         Document execute() throws IOException;
     }
 
