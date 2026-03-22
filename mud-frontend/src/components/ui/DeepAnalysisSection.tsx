@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Markdown from 'react-markdown';
 import type { TrendItem } from '@/lib/types';
-import { requestDeepAnalysis } from '@/lib/actions';
+
+const STAGE_LABELS: Record<string, string> = {
+  started: '분석 준비 중...',
+  analyzing: 'Claude가 분석 중...',
+  done: '분석 완료!',
+};
 
 interface Props {
   item: TrendItem;
@@ -12,22 +17,49 @@ interface Props {
 export function DeepAnalysisSection({ item }: Props) {
   const [analysis, setAnalysis] = useState<string | null>(item.deepAnalysis);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ stage: string; percent: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setLoading(true);
     setError(null);
-    try {
-      const result = await requestDeepAnalysis(item.id);
-      if (result.error) {
-        throw new Error(result.error);
+    setProgress(null);
+
+    const es = new EventSource(`/api/trends/${item.id}/deep-analysis/stream`);
+    eventSourceRef.current = es;
+
+    es.addEventListener('progress', (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        setProgress(data);
+      } catch {
+        // ignore parse errors
       }
-      setAnalysis(result.deepAnalysis);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했습니다.');
-    } finally {
+    });
+
+    es.addEventListener('result', (e) => {
+      setAnalysis(e.data);
       setLoading(false);
-    }
+      setProgress(null);
+      es.close();
+    });
+
+    es.addEventListener('error', (e) => {
+      if (e instanceof MessageEvent && e.data) {
+        try {
+          const data = JSON.parse(e.data);
+          setError(data.message || '분석 중 오류가 발생했습니다.');
+        } catch {
+          setError('분석 중 오류가 발생했습니다.');
+        }
+      } else {
+        setError('서버 연결이 끊어졌습니다.');
+      }
+      setLoading(false);
+      setProgress(null);
+      es.close();
+    });
   };
 
   if (analysis) {
@@ -87,16 +119,33 @@ export function DeepAnalysisSection({ item }: Props) {
         {loading ? (
           <>
             <span className="deep-analysis-spinner" />
-            AI 심층 분석 생성 중...
+            {progress ? STAGE_LABELS[progress.stage] ?? '분석 중...' : '연결 중...'}
           </>
         ) : (
           <>🔬 AI 심층 분석 생성</>
         )}
       </button>
-      {loading && (
-        <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '8px' }}>
-          Claude Sonnet이 분석 중입니다. 최대 30초 정도 소요될 수 있습니다.
-        </p>
+      {loading && progress && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{
+            width: '100%',
+            height: '4px',
+            background: 'var(--color-border)',
+            borderRadius: '2px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${progress.percent}%`,
+              height: '100%',
+              background: '#a855f7',
+              borderRadius: '2px',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+            {progress.percent}% 완료
+          </p>
+        </div>
       )}
     </div>
   );
