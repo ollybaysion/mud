@@ -75,9 +75,11 @@ export function FilterBar({ currentSource, currentKeyword, currentMinScore }: Pr
   };
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar" role="search" aria-label="트렌드 필터">
       <form onSubmit={handleKeywordSubmit} style={{ display: 'flex', gap: '8px' }}>
+        <label htmlFor="keyword-search" className="sr-only">키워드 검색</label>
         <input
+          id="keyword-search"
           type="search"
           className="search-input"
           placeholder="키워드 검색..."
@@ -93,7 +95,9 @@ export function FilterBar({ currentSource, currentKeyword, currentMinScore }: Pr
         </button>
       </form>
 
+      <label htmlFor="source-filter" className="sr-only">소스 필터</label>
       <select
+        id="source-filter"
         className="source-select"
         value={currentSource ?? ''}
         onChange={(e) => updateParam('source', e.target.value)}
@@ -103,7 +107,9 @@ export function FilterBar({ currentSource, currentKeyword, currentMinScore }: Pr
         ))}
       </select>
 
+      <label htmlFor="score-filter" className="sr-only">점수 필터</label>
       <select
+        id="score-filter"
         className="source-select"
         value={currentMinScore ?? '2'}
         onChange={(e) => updateParam('minScore', e.target.value)}
