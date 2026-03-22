@@ -114,7 +114,7 @@ class WeeklyReportServiceTest {
     void generateWithNoItems() {
         when(weeklyReportRepository.existsByPeriodStartAndPeriodEnd(any(), any())).thenReturn(false);
         when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        when(trendItemRepository.findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(any(), any(), any()))
+        when(trendItemRepository.findByStatusAndPeriodWithCategory(any(), any(), any()))
             .thenReturn(List.of());
 
         service.generateForPeriod(LocalDate.of(2026, 3, 16), LocalDate.of(2026, 3, 22));

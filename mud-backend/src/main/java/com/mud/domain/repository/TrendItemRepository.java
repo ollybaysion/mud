@@ -58,8 +58,17 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
 
     long countByAnalysisStatus(TrendItem.AnalysisStatus status);
 
-    List<TrendItem> findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
-        TrendItem.AnalysisStatus status, java.time.LocalDateTime start, java.time.LocalDateTime end
+    @Query("""
+        SELECT t FROM TrendItem t
+        LEFT JOIN FETCH t.category
+        WHERE t.analysisStatus = :status
+        AND t.crawledAt BETWEEN :start AND :end
+        ORDER BY t.relevanceScore DESC, t.publishedAt DESC
+        """)
+    List<TrendItem> findByStatusAndPeriodWithCategory(
+        @Param("status") TrendItem.AnalysisStatus status,
+        @Param("start") java.time.LocalDateTime start,
+        @Param("end") java.time.LocalDateTime end
     );
 
     List<TrendItem> findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(
