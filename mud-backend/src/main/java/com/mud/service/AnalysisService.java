@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -310,6 +312,65 @@ public class AnalysisService {
         });
 
         return future.join();
+    }
+
+    public void generateDeepAnalysisStream(Long trendItemId, SseEmitter emitter) {
+        try {
+            emitter.send(SseEmitter.event().name("progress")
+                .data(Map.of("stage", "started", "percent", 0), MediaType.APPLICATION_JSON));
+
+            TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+            txRead.setReadOnly(true);
+            TrendItem item = txRead.execute(status -> {
+                TrendItem i = trendItemRepository.findById(trendItemId)
+                    .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+                i.getKeywords().size();
+                return i;
+            });
+
+            if (item.getDeepAnalysis() != null) {
+                emitter.send(SseEmitter.event().name("result").data(item.getDeepAnalysis()));
+                emitter.complete();
+                return;
+            }
+
+            emitter.send(SseEmitter.event().name("progress")
+                .data(Map.of("stage", "analyzing", "percent", 30), MediaType.APPLICATION_JSON));
+
+            CompletableFuture<String> future = inFlightDeepAnalysis.computeIfAbsent(trendItemId, id ->
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return executeDeepAnalysis(item);
+                    } finally {
+                        inFlightDeepAnalysis.remove(id);
+                    }
+                }, executor)
+            );
+
+            future.thenAccept(analysis -> {
+                try {
+                    emitter.send(SseEmitter.event().name("progress")
+                        .data(Map.of("stage", "done", "percent", 100), MediaType.APPLICATION_JSON));
+                    emitter.send(SseEmitter.event().name("result").data(analysis));
+                    emitter.complete();
+                } catch (Exception e) {
+                    emitter.completeWithError(e);
+                }
+            }).exceptionally(ex -> {
+                try {
+                    String errorMsg = ex.getMessage() != null ? ex.getMessage() : "Unknown error";
+                    emitter.send(SseEmitter.event().name("error")
+                        .data(Map.of("code", "ANALYSIS_FAILED", "message", errorMsg), MediaType.APPLICATION_JSON));
+                    emitter.complete();
+                } catch (Exception e) {
+                    emitter.completeWithError(e);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("Deep analysis stream failed for item {}: {}", trendItemId, e.getMessage());
+            emitter.completeWithError(e);
+        }
     }
 
     private String executeDeepAnalysis(TrendItem item) {

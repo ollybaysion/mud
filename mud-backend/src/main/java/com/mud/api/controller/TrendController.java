@@ -8,8 +8,11 @@ import com.mud.dto.response.TrendStatsResponse;
 import com.mud.service.AnalysisService;
 import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
@@ -17,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Slf4j
 public class TrendController {
 
     private final TrendService trendService;
@@ -57,6 +61,15 @@ public class TrendController {
     public ResponseEntity<Map<String, String>> requestDeepAnalysis(@PathVariable Long id) {
         String analysis = analysisService.generateDeepAnalysis(id);
         return ResponseEntity.ok(Map.of("deepAnalysis", analysis));
+    }
+
+    @GetMapping(value = "/trends/{id}/deep-analysis/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamDeepAnalysis(@PathVariable Long id) {
+        SseEmitter emitter = new SseEmitter(300_000L); // 5분 타임아웃
+
+        analysisService.generateDeepAnalysisStream(id, emitter);
+
+        return emitter;
     }
 
     @GetMapping("/categories")
