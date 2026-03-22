@@ -212,7 +212,7 @@ public class AnalysisService {
             [
               {
                 "koreanSummary": "현업 개발자 관점에서 2-3문장으로 핵심을 요약 (한국어로 작성)",
-                "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 general 중 하나",
+                "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 hardware 또는 general 중 하나",
                 "relevanceScore": 1부터 5 사이의 정수,
                 "keywords": ["키워드1", "키워드2", "키워드3"]
               }
