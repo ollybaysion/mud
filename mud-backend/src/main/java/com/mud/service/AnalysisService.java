@@ -150,10 +150,20 @@ public class AnalysisService {
                         item.setKoreanSummary(result.koreanSummary());
                         item.setRelevanceScore(result.relevanceScore());
                         item.setKeywords(result.keywords());
+                        int timeliness = calculateTimeliness(item.getPublishedAt());
+                        int totalScore = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
+                        int finalScore;
+                        if (totalScore <= 1) finalScore = 1;
+                        else if (totalScore <= 3) finalScore = 2;
+                        else if (totalScore <= 5) finalScore = 3;
+                        else if (totalScore <= 7) finalScore = 4;
+                        else finalScore = 5;
+
                         item.setScoringRelevance(result.scoringRelevance());
-                        item.setScoringTimeliness(result.scoringTimeliness());
+                        item.setScoringTimeliness(timeliness);
                         item.setScoringActionability(result.scoringActionability());
                         item.setScoringImpact(result.scoringImpact());
+                        item.setRelevanceScore(finalScore);
                         item.setTopicTag(result.topicTag());
                         categoryRepository.findBySlug(result.categorySlug())
                             .ifPresent(item::setCategory);
@@ -236,7 +246,6 @@ public class AnalysisService {
                 "keywords": ["키워드1", "키워드2", "키워드3"],
                 "scoring": {
                   "relevance": 0부터 3 사이의 정수,
-                  "timeliness": 0부터 2 사이의 정수,
                   "actionability": 0부터 3 사이의 정수,
                   "impact": 0부터 2 사이의 정수
                 },
@@ -251,11 +260,6 @@ public class AnalysisService {
             2 = 기술 업계 동향, 개발 문화, 기술 의사결정 관련
             1 = 기술과 간접 관련 (예: 테크 기업 인사, 투자 뉴스)
             0 = 기술과 무관
-
-            시의성 (timeliness, 0~2):
-            2 = 지금 즉시 알아야 함 (보안 취약점, 브레이킹 체인지)
-            1 = 최근 트렌드/릴리즈이지만 긴급하지 않음
-            0 = 시간 무관한 일반 콘텐츠
 
             실용성 (actionability, 0~3):
             3 = 바로 적용 가능한 튜토리얼, 도구, 코드
@@ -302,9 +306,10 @@ public class AnalysisService {
 
                 JsonNode scoring = node.path("scoring");
                 int sRelevance = Math.max(0, Math.min(3, scoring.path("relevance").asInt(1)));
-                int sTimeliness = Math.max(0, Math.min(2, scoring.path("timeliness").asInt(0)));
                 int sActionability = Math.max(0, Math.min(3, scoring.path("actionability").asInt(1)));
                 int sImpact = Math.max(0, Math.min(2, scoring.path("impact").asInt(0)));
+                // timeliness는 BE에서 publishedAt 기반 자동 계산 (파싱 시점에는 0)
+                int sTimeliness = 0;
 
                 int totalScore = sRelevance + sTimeliness + sActionability + sImpact;
                 int relevanceScore;
@@ -334,6 +339,14 @@ public class AnalysisService {
         return partitions;
     }
 
+    int calculateTimeliness(LocalDateTime publishedAt) {
+        if (publishedAt == null) return 0;
+        long hoursAgo = java.time.Duration.between(publishedAt, LocalDateTime.now()).toHours();
+        if (hoursAgo <= 24) return 2;
+        if (hoursAgo <= 168) return 1; // 7일
+        return 0;
+    }
+
     record AnalysisResult(
         String koreanSummary,
         String categorySlug,
@@ -355,7 +368,14 @@ public class AnalysisService {
 
     @Async
     public void rescoreExistingItems() {
+        Lock rescoreLock = redisLockRegistry.obtain("analysis:rescore");
+        if (!rescoreLock.tryLock()) {
+            log.info("재평가가 이미 진행 중입니다 (분산 락 보유 중)");
+            return;
+        }
+
         if (!rescoreInProgress.compareAndSet(false, true)) {
+            rescoreLock.unlock();
             log.info("재평가가 이미 진행 중입니다");
             return;
         }
@@ -399,18 +419,27 @@ public class AnalysisService {
                                 if (item == null) continue;
                                 AnalysisResult result = (i < results.size()) ? results.get(i)
                                     : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
+                                int timeliness = calculateTimeliness(item.getPublishedAt());
+                                int total = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
+                                int finalScore;
+                                if (total <= 1) finalScore = 1;
+                                else if (total <= 3) finalScore = 2;
+                                else if (total <= 5) finalScore = 3;
+                                else if (total <= 7) finalScore = 4;
+                                else finalScore = 5;
+
                                 item.setKoreanSummary(result.koreanSummary());
-                                item.setRelevanceScore(result.relevanceScore());
+                                item.setRelevanceScore(finalScore);
                                 item.setKeywords(result.keywords());
                                 item.setScoringRelevance(result.scoringRelevance());
-                                item.setScoringTimeliness(result.scoringTimeliness());
+                                item.setScoringTimeliness(timeliness);
                                 item.setScoringActionability(result.scoringActionability());
                                 item.setScoringImpact(result.scoringImpact());
                                 item.setTopicTag(result.topicTag());
                                 categoryRepository.findBySlug(result.categorySlug())
                                     .ifPresent(item::setCategory);
                                 item.setAnalyzedAt(LocalDateTime.now());
-                                if (result.relevanceScore() <= 1) {
+                                if (finalScore <= 1) {
                                     item.setAnalysisStatus(TrendItem.AnalysisStatus.REJECTED);
                                 }
                             }
@@ -437,6 +466,7 @@ public class AnalysisService {
             log.info("재평가 완료: {}/{}", rescoreProcessed.get(), rescoreTotal);
         } finally {
             rescoreInProgress.set(false);
+            rescoreLock.unlock();
         }
     }
 
