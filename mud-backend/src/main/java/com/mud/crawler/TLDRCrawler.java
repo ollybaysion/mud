@@ -49,9 +49,7 @@ public class TLDRCrawler extends CrawlerBase {
                     String title = item.select("title").text().trim();
                     if (title.isEmpty()) continue;
 
-                    // TLDR description은 HTML이 포함될 수 있어 텍스트만 추출
-                    String description = item.select("description").text().trim();
-                    if (description.length() > 400) description = description.substring(0, 397) + "...";
+                    String description = cleanDescription(item.select("description").text());
 
                     String pubDateStr = item.select("pubDate").text().trim();
                     LocalDateTime publishedAt = LocalDateTime.now();

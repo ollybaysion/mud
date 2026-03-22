@@ -51,7 +51,6 @@ public class GeekNewsCrawler extends CrawlerBase {
 
                 String description = entry.select("summary").text().trim();
                 if (description.isEmpty()) description = entry.select("content").text().trim();
-                if (description.length() > 400) description = description.substring(0, 397) + "...";
 
                 // Atom: <published> 또는 <updated> (ISO 8601)
                 String pubDateStr = entry.select("published").text().trim();

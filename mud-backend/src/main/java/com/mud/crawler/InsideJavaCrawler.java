@@ -47,7 +47,6 @@ public class InsideJavaCrawler extends CrawlerBase {
 
                 String summary = entry.select("summary").text().trim();
                 if (summary.isEmpty()) summary = entry.select("content").text().trim();
-                if (summary.length() > 400) summary = summary.substring(0, 397) + "...";
 
                 String publishedStr = entry.select("published").text().trim();
                 if (publishedStr.isEmpty()) publishedStr = entry.select("updated").text().trim();
