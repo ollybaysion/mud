@@ -79,7 +79,6 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, excludes: [
                 '**/crawler/*Crawler.class',   // 크롤러 (외부 HTTP 의존)
-                '**/dto/**',                    // DTO
                 '**/domain/entity/**',          // JPA 엔티티
                 '**/config/Redis*',             // Redis 설정
                 '**/config/Web*',               // Web 설정
