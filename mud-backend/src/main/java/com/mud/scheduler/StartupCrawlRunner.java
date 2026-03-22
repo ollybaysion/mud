@@ -36,6 +36,9 @@ public class StartupCrawlRunner {
     private final MartinFowlerCrawler martinFowlerCrawler;
     private final JetBrainsCrawler jetBrainsCrawler;
     private final GeekNewsCrawler geekNewsCrawler;
+    private final NvidiaBlogCrawler nvidiaBlogCrawler;
+    private final ServeTheHomeCrawler serveTheHomeCrawler;
+    private final TomsHardwareCrawler tomsHardwareCrawler;
     private final AnalysisService analysisService;
 
     @Async
@@ -72,6 +75,9 @@ public class StartupCrawlRunner {
         try { all.addAll(martinFowlerCrawler.crawl()); }      catch (Exception e) { log.error("MartinFowler 크롤 실패", e); }
         try { all.addAll(jetBrainsCrawler.crawl()); }         catch (Exception e) { log.error("JetBrains 크롤 실패", e); }
         try { all.addAll(geekNewsCrawler.crawl()); }          catch (Exception e) { log.error("GeekNews 크롤 실패", e); }
+        try { all.addAll(nvidiaBlogCrawler.crawl()); }       catch (Exception e) { log.error("NVIDIA Blog 크롤 실패", e); }
+        try { all.addAll(serveTheHomeCrawler.crawl()); }     catch (Exception e) { log.error("ServeTheHome 크롤 실패", e); }
+        try { all.addAll(tomsHardwareCrawler.crawl()); }     catch (Exception e) { log.error("Tom's HW 크롤 실패", e); }
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
