@@ -33,6 +33,17 @@ public class AllSourcesCrawlJob implements Job {
     @Autowired private MartinFowlerCrawler martinFowlerCrawler;
     @Autowired private JetBrainsCrawler jetBrainsCrawler;
     @Autowired private GeekNewsCrawler geekNewsCrawler;
+    @Autowired private NvidiaBlogCrawler nvidiaBlogCrawler;
+    @Autowired private ServeTheHomeCrawler serveTheHomeCrawler;
+    @Autowired private TomsHardwareCrawler tomsHardwareCrawler;
+    @Autowired private PhoronixCrawler phoronixCrawler;
+    @Autowired private TechPowerUpCrawler techPowerUpCrawler;
+    @Autowired private HackadayCrawler hackadayCrawler;
+    @Autowired private EETimesCrawler eeTimesCrawler;
+    @Autowired private SemiEngineeringCrawler semiEngineeringCrawler;
+    @Autowired private ChipsAndCheeseCrawler chipsAndCheeseCrawler;
+    @Autowired private VideoCardzCrawler videoCardzCrawler;
+    @Autowired private CNXSoftwareCrawler cnxSoftwareCrawler;
     @Autowired private AnalysisService analysisService;
 
     @Override
@@ -56,6 +67,17 @@ public class AllSourcesCrawlJob implements Job {
             try { all.addAll(martinFowlerCrawler.crawl()); }      catch (Exception e) { log.error("MartinFowler 크롤 실패", e); }
             try { all.addAll(jetBrainsCrawler.crawl()); }         catch (Exception e) { log.error("JetBrains 크롤 실패", e); }
             try { all.addAll(geekNewsCrawler.crawl()); }          catch (Exception e) { log.error("GeekNews 크롤 실패", e); }
+            try { all.addAll(nvidiaBlogCrawler.crawl()); }       catch (Exception e) { log.error("NVIDIA Blog 크롤 실패", e); }
+            try { all.addAll(serveTheHomeCrawler.crawl()); }     catch (Exception e) { log.error("ServeTheHome 크롤 실패", e); }
+            try { all.addAll(tomsHardwareCrawler.crawl()); }     catch (Exception e) { log.error("Tom's HW 크롤 실패", e); }
+            try { all.addAll(phoronixCrawler.crawl()); }         catch (Exception e) { log.error("Phoronix 크롤 실패", e); }
+            try { all.addAll(techPowerUpCrawler.crawl()); }      catch (Exception e) { log.error("TechPowerUp 크롤 실패", e); }
+            try { all.addAll(hackadayCrawler.crawl()); }         catch (Exception e) { log.error("Hackaday 크롤 실패", e); }
+            try { all.addAll(eeTimesCrawler.crawl()); }          catch (Exception e) { log.error("EE Times 크롤 실패", e); }
+            try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
+            try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
+            try { all.addAll(videoCardzCrawler.crawl()); }       catch (Exception e) { log.error("VideoCardz 크롤 실패", e); }
+            try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
 
             analysisService.analyzePendingItems();
             log.info("=== All sources crawl job finished: {} new items ===", all.size());
