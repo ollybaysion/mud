@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { DeepAnalysisSection } from '@/components/ui/DeepAnalysisSection';
-import { sanitizeUrl } from '@/lib/url';
+import { sanitizeUrl, stripHtml } from '@/lib/url';
 import { SOURCE_CONFIG, SCORE_COLORS, SCORE_LABELS } from '@/constants/sources';
 
 interface Props {
@@ -81,7 +81,7 @@ export default async function TrendDetailPage({ params }: Props) {
             원문 설명
           </div>
           <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
-            {item.description}
+            {stripHtml(item.description)}
           </p>
         </div>
       )}
