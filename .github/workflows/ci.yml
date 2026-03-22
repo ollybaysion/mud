@@ -76,6 +76,17 @@ jobs:
           CLAUDE_API_KEY: test-key
         run: ./gradlew jacocoTestCoverageVerification --no-daemon
 
+      - name: Print Coverage
+        if: always()
+        working-directory: mud-backend
+        run: |
+          if [ -f build/reports/jacoco/test/jacocoTestReport.csv ]; then
+            awk -F, '{ instructions += $4+$5; covered += $5 } END { printf "📊 Code Coverage: %.1f%%\n", 100*covered/instructions }' \
+              build/reports/jacoco/test/jacocoTestReport.csv
+          else
+            echo "⚠️ Jacoco report not found"
+          fi
+
   frontend:
     name: Frontend Build & Lint
     runs-on: ubuntu-latest
