@@ -61,6 +61,9 @@ public class AnalysisService {
     @Value("${analysis.batch-size:5}")
     private int batchSize;
 
+    @Value("${scoring.phase:2}")
+    private int scoringPhase;
+
     @Value("${claude.api.deep-analysis-model:claude-sonnet-4-6}")
     private String deepAnalysisModel;
 
@@ -79,6 +82,11 @@ public class AnalysisService {
 
     @Async
     public void analyzePendingItems() {
+        if (scoringPhase == 1) {
+            log.info("Scoring Phase 1: 신규 분석 스킵 (재평가 모드)");
+            return;
+        }
+
         Lock lock = redisLockRegistry.obtain("analysis:pending");
 
         if (!lock.tryLock()) {
@@ -138,10 +146,25 @@ public class AnalysisService {
                         TrendItem item = managedMap.get(batch.get(i).getId());
                         if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
-                            : new AnalysisResult("분석 실패", "general", 3, List.of());
+                            : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
                         item.setKoreanSummary(result.koreanSummary());
                         item.setRelevanceScore(result.relevanceScore());
                         item.setKeywords(result.keywords());
+                        int timeliness = calculateTimeliness(item.getPublishedAt());
+                        int totalScore = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
+                        int finalScore;
+                        if (totalScore <= 1) finalScore = 1;
+                        else if (totalScore <= 3) finalScore = 2;
+                        else if (totalScore <= 5) finalScore = 3;
+                        else if (totalScore <= 7) finalScore = 4;
+                        else finalScore = 5;
+
+                        item.setScoringRelevance((short) result.scoringRelevance());
+                        item.setScoringTimeliness((short) timeliness);
+                        item.setScoringActionability((short) result.scoringActionability());
+                        item.setScoringImpact((short) result.scoringImpact());
+                        item.setRelevanceScore(finalScore);
+                        item.setTopicTag(result.topicTag());
                         categoryRepository.findBySlug(result.categorySlug())
                             .ifPresent(item::setCategory);
                         item.setAnalyzedAt(LocalDateTime.now());
@@ -193,7 +216,11 @@ public class AnalysisService {
         if (response == null) throw new RuntimeException("Claude API returned null");
 
         String text = extractResponseText(response);
-        return parseBatchResult(text, batch.size());
+        List<AnalysisResult> results = parseBatchResult(text, batch.size());
+        if (results.isEmpty()) {
+            throw new RuntimeException("Claude 응답 파싱 실패: 결과가 비어있습니다");
+        }
+        return results;
     }
 
     private String buildBatchPrompt(List<TrendItem> batch) {
@@ -216,17 +243,34 @@ public class AnalysisService {
               {
                 "koreanSummary": "현업 개발자 관점에서 2-3문장으로 핵심을 요약 (한국어로 작성)",
                 "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 hardware 또는 general 중 하나",
-                "relevanceScore": 1부터 5 사이의 정수,
-                "keywords": ["키워드1", "키워드2", "키워드3"]
+                "keywords": ["키워드1", "키워드2", "키워드3"],
+                "scoring": {
+                  "relevance": 0부터 3 사이의 정수,
+                  "actionability": 0부터 3 사이의 정수,
+                  "impact": 0부터 2 사이의 정수
+                },
+                "topicTag": "주제를 대표하는 영문 소문자 태그 (예: kubernetes, react, rust, llm)"
               }
             ]
 
-            relevanceScore 기준:
-            5 = 즉시 실무에 적용 가능한 핵심 기술
-            4 = 알아두면 유용한 중요 트렌드
-            3 = 관심 분야라면 볼만한 내용
-            2 = 참고 수준의 정보
-            1 = 현업 개발자 관련성 낮음
+            scoring 채점 기준:
+
+            기술 관련성 (relevance, 0~3):
+            3 = 코드, 아키텍처, 도구, 프레임워크를 직접 다룸 (예: React 19 릴리즈, Kubernetes CVE)
+            2 = 기술 업계 동향, 개발 문화, 기술 의사결정 관련
+            1 = 기술과 간접 관련 (예: 테크 기업 인사, 투자 뉴스)
+            0 = 기술과 무관
+
+            실용성 (actionability, 0~3):
+            3 = 바로 적용 가능한 튜토리얼, 도구, 코드
+            2 = 실무 의사결정에 참고 가능
+            1 = 배경 지식 수준
+            0 = 실무 적용 불가
+
+            민감도/임팩트 (impact, 0~2):
+            2 = 대다수 개발자에게 영향
+            1 = 특정 기술 스택 사용자에게 영향
+            0 = 니치하거나 영향 범위 극소
             """.formatted(batch.size(), items);
     }
 
@@ -242,11 +286,7 @@ public class AnalysisService {
 
     private List<AnalysisResult> parseBatchResult(String text, int expectedSize) {
         try {
-            String json = text.trim()
-                .replaceAll("^```json\\s*", "")
-                .replaceAll("^```\\s*", "")
-                .replaceAll("\\s*```$", "")
-                .trim();
+            String json = text.replaceAll("(?s)^\\s*```(?:json)?\\s*|\\s*```\\s*$", "").trim();
 
             JsonNode arrayNode = objectMapper.readTree(json);
             if (!arrayNode.isArray()) {
@@ -258,13 +298,31 @@ public class AnalysisService {
             for (JsonNode node : arrayNode) {
                 String koreanSummary = node.path("koreanSummary").asText("요약 없음");
                 String categorySlug = node.path("categorySlug").asText("general");
-                int relevanceScore = Math.max(1, Math.min(5, node.path("relevanceScore").asInt(3)));
                 List<String> keywords = new ArrayList<>();
                 JsonNode kwNode = node.path("keywords");
                 if (kwNode.isArray()) {
                     kwNode.forEach(kw -> keywords.add(kw.asText()));
                 }
-                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords));
+
+                JsonNode scoring = node.path("scoring");
+                int sRelevance = Math.max(0, Math.min(3, scoring.path("relevance").asInt(1)));
+                int sActionability = Math.max(0, Math.min(3, scoring.path("actionability").asInt(1)));
+                int sImpact = Math.max(0, Math.min(2, scoring.path("impact").asInt(0)));
+                // timeliness는 BE에서 publishedAt 기반 자동 계산 (파싱 시점에는 0)
+                int sTimeliness = 0;
+
+                int totalScore = sRelevance + sTimeliness + sActionability + sImpact;
+                int relevanceScore;
+                if (totalScore <= 1) relevanceScore = 1;
+                else if (totalScore <= 3) relevanceScore = 2;
+                else if (totalScore <= 5) relevanceScore = 3;
+                else if (totalScore <= 7) relevanceScore = 4;
+                else relevanceScore = 5;
+
+                String topicTag = node.path("topicTag").asText(null);
+
+                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords,
+                    sRelevance, sTimeliness, sActionability, sImpact, topicTag));
             }
             return results;
         } catch (Exception e) {
@@ -281,12 +339,145 @@ public class AnalysisService {
         return partitions;
     }
 
+    int calculateTimeliness(LocalDateTime publishedAt) {
+        if (publishedAt == null) return 0;
+        long hoursAgo = java.time.Duration.between(publishedAt, LocalDateTime.now()).toHours();
+        if (hoursAgo <= 24) return 2;
+        if (hoursAgo <= 168) return 1; // 7일
+        return 0;
+    }
+
     record AnalysisResult(
         String koreanSummary,
         String categorySlug,
         int relevanceScore,
-        List<String> keywords
+        List<String> keywords,
+        int scoringRelevance,
+        int scoringTimeliness,
+        int scoringActionability,
+        int scoringImpact,
+        String topicTag
     ) {}
+
+    // --- Rescore ---
+
+    private final AtomicInteger rescoreProcessed = new AtomicInteger(0);
+    private final AtomicInteger rescoreFailed = new AtomicInteger(0);
+    private volatile int rescoreTotal = 0;
+    private final java.util.concurrent.atomic.AtomicBoolean rescoreInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
+
+    @Async
+    public void rescoreExistingItems() {
+        Lock rescoreLock = redisLockRegistry.obtain("analysis:rescore");
+        if (!rescoreLock.tryLock()) {
+            log.info("재평가가 이미 진행 중입니다 (분산 락 보유 중)");
+            return;
+        }
+
+        if (!rescoreInProgress.compareAndSet(false, true)) {
+            rescoreLock.unlock();
+            log.info("재평가가 이미 진행 중입니다");
+            return;
+        }
+        rescoreProcessed.set(0);
+        rescoreFailed.set(0);
+
+        try {
+            TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+            txRead.setReadOnly(true);
+            List<Long> doneItemIds = txRead.execute(status ->
+                trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
+                    .stream().map(TrendItem::getId).toList()
+            );
+
+            rescoreTotal = doneItemIds.size();
+            log.info("재평가 시작: {}개 아이템", rescoreTotal);
+
+            List<List<Long>> batches = new ArrayList<>();
+            for (int i = 0; i < doneItemIds.size(); i += batchSize) {
+                batches.add(doneItemIds.subList(i, Math.min(i + batchSize, doneItemIds.size())));
+            }
+
+            for (List<Long> batchIds : batches) {
+                try {
+                    semaphore.acquire();
+                    try {
+                        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+                        List<TrendItem> items = tx.execute(status -> {
+                            List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
+                            managed.forEach(item -> item.getKeywords().size());
+                            return managed;
+                        });
+
+                        List<AnalysisResult> results = callClaudeApiBatch(items);
+
+                        tx.executeWithoutResult(status -> {
+                            Map<Long, TrendItem> managedMap = trendItemRepository.findAllById(batchIds)
+                                .stream().collect(Collectors.toMap(TrendItem::getId, Function.identity()));
+                            for (int i = 0; i < items.size(); i++) {
+                                TrendItem item = managedMap.get(items.get(i).getId());
+                                if (item == null) continue;
+                                AnalysisResult result = (i < results.size()) ? results.get(i)
+                                    : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
+                                int timeliness = calculateTimeliness(item.getPublishedAt());
+                                int total = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
+                                int finalScore;
+                                if (total <= 1) finalScore = 1;
+                                else if (total <= 3) finalScore = 2;
+                                else if (total <= 5) finalScore = 3;
+                                else if (total <= 7) finalScore = 4;
+                                else finalScore = 5;
+
+                                item.setKoreanSummary(result.koreanSummary());
+                                item.setRelevanceScore(finalScore);
+                                item.setKeywords(result.keywords());
+                                item.setScoringRelevance((short) result.scoringRelevance());
+                                item.setScoringTimeliness((short) timeliness);
+                                item.setScoringActionability((short) result.scoringActionability());
+                                item.setScoringImpact((short) result.scoringImpact());
+                                item.setTopicTag(result.topicTag());
+                                categoryRepository.findBySlug(result.categorySlug())
+                                    .ifPresent(item::setCategory);
+                                item.setAnalyzedAt(LocalDateTime.now());
+                                if (finalScore <= 1) {
+                                    item.setAnalysisStatus(TrendItem.AnalysisStatus.REJECTED);
+                                }
+                            }
+                            trendItemRepository.saveAll(managedMap.values());
+                        });
+
+                        rescoreProcessed.addAndGet(batchIds.size());
+                        log.info("재평가 진행: {}/{}", rescoreProcessed.get(), rescoreTotal);
+                    } finally {
+                        semaphore.release();
+                    }
+
+                    Thread.sleep(600);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    log.error("재평가 배치 실패: {}", e.getMessage());
+                    rescoreFailed.addAndGet(batchIds.size());
+                }
+            }
+
+            trendService.evictTrendCaches();
+            log.info("재평가 완료: {}/{}", rescoreProcessed.get(), rescoreTotal);
+        } finally {
+            rescoreInProgress.set(false);
+            rescoreLock.unlock();
+        }
+    }
+
+    public Map<String, Object> getRescoreStatus() {
+        return Map.of(
+            "inProgress", rescoreInProgress.get(),
+            "processed", rescoreProcessed.get(),
+            "failed", rescoreFailed.get(),
+            "total", rescoreTotal
+        );
+    }
 
     public String generateDeepAnalysis(Long trendItemId) {
         TransactionTemplate txRead = new TransactionTemplate(transactionManager);

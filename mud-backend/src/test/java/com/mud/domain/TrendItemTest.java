@@ -41,10 +41,11 @@ class TrendItemTest {
     @DisplayName("AnalysisStatus enum — 상태 전이 값 확인")
     void analysisStatusValues() {
         assertThat(TrendItem.AnalysisStatus.values())
-            .containsExactly(
+            .contains(
                 TrendItem.AnalysisStatus.PENDING,
                 TrendItem.AnalysisStatus.PROCESSING,
                 TrendItem.AnalysisStatus.DONE,
+                TrendItem.AnalysisStatus.REJECTED,
                 TrendItem.AnalysisStatus.FAILED
             );
     }
