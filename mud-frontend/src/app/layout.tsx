@@ -5,11 +5,27 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { api } from '@/lib/api';
 
 export const metadata: Metadata = {
-  title: 'Mud - 기술 트렌드',
+  title: {
+    default: 'Mud - 기술 트렌드',
+    template: '%s | Mud',
+  },
   description: '현업 개발자를 위한 최신 기술 트렌드 큐레이션',
   icons: {
     icon: '/favicon.svg',
     apple: '/favicon.svg',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'Mud',
+    title: 'Mud - 기술 트렌드 큐레이션',
+    description: '18개 소스에서 수집한 최신 기술 트렌드를 AI가 분석하여 제공합니다.',
+  },
+  twitter: {
+    card: 'summary',
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
