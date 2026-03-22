@@ -315,43 +315,62 @@ public class AnalysisService {
     }
 
     public void generateDeepAnalysisStream(Long trendItemId, SseEmitter emitter) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"started\",\"percent\":0}"));
+        try {
+            emitter.send(SseEmitter.event().name("progress")
+                .data(Map.of("stage", "started", "percent", 0), MediaType.APPLICATION_JSON));
 
-                TransactionTemplate txRead = new TransactionTemplate(transactionManager);
-                txRead.setReadOnly(true);
-                TrendItem item = txRead.execute(status -> {
-                    TrendItem i = trendItemRepository.findById(trendItemId)
-                        .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
-                    i.getKeywords().size();
-                    return i;
-                });
+            TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+            txRead.setReadOnly(true);
+            TrendItem item = txRead.execute(status -> {
+                TrendItem i = trendItemRepository.findById(trendItemId)
+                    .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+                i.getKeywords().size();
+                return i;
+            });
 
-                if (item.getDeepAnalysis() != null) {
-                    emitter.send(SseEmitter.event().name("result").data(item.getDeepAnalysis()));
-                    emitter.complete();
-                    return;
-                }
-
-                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"analyzing\",\"percent\":30}"));
-
-                String analysis = executeDeepAnalysis(item);
-
-                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"done\",\"percent\":100}"));
-                emitter.send(SseEmitter.event().name("result").data(analysis));
+            if (item.getDeepAnalysis() != null) {
+                emitter.send(SseEmitter.event().name("result").data(item.getDeepAnalysis()));
                 emitter.complete();
-            } catch (Exception e) {
-                log.error("Deep analysis stream failed for item {}: {}", trendItemId, e.getMessage());
-                try {
-                    emitter.send(SseEmitter.event().name("error")
-                        .data("{\"code\":\"ANALYSIS_FAILED\",\"message\":\"" + e.getMessage().replace("\"", "'") + "\"}"));
-                    emitter.complete();
-                } catch (Exception ex) {
-                    emitter.completeWithError(ex);
-                }
+                return;
             }
-        }, executor);
+
+            emitter.send(SseEmitter.event().name("progress")
+                .data(Map.of("stage", "analyzing", "percent", 30), MediaType.APPLICATION_JSON));
+
+            CompletableFuture<String> future = inFlightDeepAnalysis.computeIfAbsent(trendItemId, id ->
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return executeDeepAnalysis(item);
+                    } finally {
+                        inFlightDeepAnalysis.remove(id);
+                    }
+                }, executor)
+            );
+
+            future.thenAccept(analysis -> {
+                try {
+                    emitter.send(SseEmitter.event().name("progress")
+                        .data(Map.of("stage", "done", "percent", 100), MediaType.APPLICATION_JSON));
+                    emitter.send(SseEmitter.event().name("result").data(analysis));
+                    emitter.complete();
+                } catch (Exception e) {
+                    emitter.completeWithError(e);
+                }
+            }).exceptionally(ex -> {
+                try {
+                    String errorMsg = ex.getMessage() != null ? ex.getMessage() : "Unknown error";
+                    emitter.send(SseEmitter.event().name("error")
+                        .data(Map.of("code", "ANALYSIS_FAILED", "message", errorMsg), MediaType.APPLICATION_JSON));
+                    emitter.complete();
+                } catch (Exception e) {
+                    emitter.completeWithError(e);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("Deep analysis stream failed for item {}: {}", trendItemId, e.getMessage());
+            emitter.completeWithError(e);
+        }
     }
 
     private String executeDeepAnalysis(TrendItem item) {
