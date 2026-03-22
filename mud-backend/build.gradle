@@ -19,8 +19,18 @@ configurations {
     }
 }
 
+ext {
+    testcontainersVersion = '1.19.7'
+}
+
 repositories {
     mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+    }
 }
 
 dependencies {
@@ -62,11 +72,25 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'com.redis:testcontainers-redis:2.2.2'
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
     finalizedBy jacocoTestReport
+}
+
+tasks.register('integrationTest', Test) {
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    finalizedBy jacocoTestReport
+    description = 'Runs integration tests (requires Docker)'
+    group = 'verification'
 }
 
 jacocoTestReport {
