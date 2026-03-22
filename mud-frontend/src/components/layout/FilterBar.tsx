@@ -23,6 +23,17 @@ const SOURCES = [
   { value: 'MARTIN_FOWLER', label: '🏗️ Martin Fowler' },
   { value: 'JETBRAINS', label: '🧠 JetBrains' },
   { value: 'GEEKNEWS', label: '🇰🇷 GeekNews' },
+  { value: 'NVIDIA_BLOG', label: '🟢 NVIDIA Blog' },
+  { value: 'SERVE_THE_HOME', label: '🖥️ ServeTheHome' },
+  { value: 'TOMS_HARDWARE', label: "🔧 Tom's Hardware" },
+  { value: 'PHORONIX', label: '🐧 Phoronix' },
+  { value: 'TECHPOWERUP', label: '⚡ TechPowerUp' },
+  { value: 'HACKADAY', label: '🛠️ Hackaday' },
+  { value: 'EE_TIMES', label: '📡 EE Times' },
+  { value: 'SEMI_ENGINEERING', label: '🔬 Semi Engineering' },
+  { value: 'CHIPS_AND_CHEESE', label: '🧀 Chips and Cheese' },
+  { value: 'VIDEOCARDZ', label: '🎮 VideoCardz' },
+  { value: 'CNX_SOFTWARE', label: '💾 CNX Software' },
 ];
 
 interface Props {

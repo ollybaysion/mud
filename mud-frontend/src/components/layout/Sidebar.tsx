@@ -11,6 +11,17 @@ const SOURCE_LINKS = [
   { href: '/trends?source=DEV_TO', label: 'dev.to', emoji: '💻' },
   { href: '/trends?source=ARXIV', label: 'ArXiv', emoji: '📄' },
   { href: '/trends?source=REDDIT', label: 'Reddit', emoji: '🔴' },
+  { href: '/trends?source=NVIDIA_BLOG', label: 'NVIDIA Blog', emoji: '🟢' },
+  { href: '/trends?source=SERVE_THE_HOME', label: 'ServeTheHome', emoji: '🖥️' },
+  { href: '/trends?source=TOMS_HARDWARE', label: "Tom's Hardware", emoji: '🔧' },
+  { href: '/trends?source=PHORONIX', label: 'Phoronix', emoji: '🐧' },
+  { href: '/trends?source=TECHPOWERUP', label: 'TechPowerUp', emoji: '⚡' },
+  { href: '/trends?source=HACKADAY', label: 'Hackaday', emoji: '🛠️' },
+  { href: '/trends?source=EE_TIMES', label: 'EE Times', emoji: '📡' },
+  { href: '/trends?source=SEMI_ENGINEERING', label: 'Semi Engineering', emoji: '🔬' },
+  { href: '/trends?source=CHIPS_AND_CHEESE', label: 'Chips and Cheese', emoji: '🧀' },
+  { href: '/trends?source=VIDEOCARDZ', label: 'VideoCardz', emoji: '🎮' },
+  { href: '/trends?source=CNX_SOFTWARE', label: 'CNX Software', emoji: '💾' },
 ];
 
 export function Sidebar({ categories }: Props) {
