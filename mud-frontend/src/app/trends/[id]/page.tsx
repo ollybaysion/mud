@@ -4,30 +4,7 @@ import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { DeepAnalysisSection } from '@/components/ui/DeepAnalysisSection';
 import { sanitizeUrl } from '@/lib/url';
-
-const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
-  GITHUB: { label: 'GitHub', color: '#e2e8f0', emoji: '🐙' },
-  HACKER_NEWS: { label: 'Hacker News', color: '#ff6600', emoji: '🧡' },
-  DEV_TO: { label: 'dev.to', color: '#3b49df', emoji: '💻' },
-  ARXIV: { label: 'ArXiv', color: '#b31b1b', emoji: '📄' },
-  REDDIT: { label: 'Reddit', color: '#ff4500', emoji: '🔴' },
-  PAPERS_WITH_CODE: { label: 'Papers with Code', color: '#21cbaf', emoji: '📊' },
-  INFOQ: { label: 'InfoQ', color: '#007dc5', emoji: '📰' },
-  HUGGING_FACE: { label: 'Hugging Face', color: '#ffcc00', emoji: '🤗' },
-  LOBSTERS: { label: 'Lobsters', color: '#ac130d', emoji: '🦞' },
-  INSIDE_JAVA: { label: 'Inside Java', color: '#5382a1', emoji: '☕' },
-  ISOCPP: { label: 'ISO C++', color: '#00599c', emoji: '⚙️' },
-  TLDR_AI: { label: 'TLDR', color: '#1a1a2e', emoji: '📬' },
-  THE_NEW_STACK: { label: 'The New Stack', color: '#1a73e8', emoji: '🏗️' },
-  CNCF: { label: 'CNCF', color: '#446ca9', emoji: '☁️' },
-  STACKOVERFLOW_BLOG: { label: 'SO Blog', color: '#f48024', emoji: '📝' },
-  MARTIN_FOWLER: { label: 'Martin Fowler', color: '#2d5016', emoji: '🏛️' },
-  JETBRAINS: { label: 'JetBrains', color: '#ff318c', emoji: '🧠' },
-  GEEKNEWS: { label: 'GeekNews', color: '#4a90d9', emoji: '🇰🇷' },
-};
-
-const SCORE_COLORS = ['', '#64748b', '#f59e0b', '#3b82f6', '#10b981', '#a855f7'];
-const SCORE_LABELS = ['', '관련성 낮음', '참고 수준', '알아두면 유용', '중요 트렌드', '즉시 적용 가능'];
+import { SOURCE_CONFIG, SCORE_COLORS, SCORE_LABELS } from '@/constants/sources';
 
 interface Props {
   params: Promise<{ id: string }>;
