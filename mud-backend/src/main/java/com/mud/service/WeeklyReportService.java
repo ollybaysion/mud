@@ -9,10 +9,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.DayOfWeek;
@@ -33,6 +34,7 @@ public class WeeklyReportService {
     private final WebClient claudeWebClient;
     private final ObjectMapper objectMapper;
     private final CacheManager cacheManager;
+    private final PlatformTransactionManager transactionManager;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -57,7 +59,11 @@ public class WeeklyReportService {
         LocalDateTime endDt = periodEnd.atTime(23, 59, 59);
 
         // 1단계: 데이터 조회 (트랜잭션)
-        List<TrendItem> periodItems = queryPeriodItems(startDt, endDt);
+        TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+        txRead.setReadOnly(true);
+        List<TrendItem> periodItems = txRead.execute(status ->
+            trendItemRepository.findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
+                TrendItem.AnalysisStatus.DONE, startDt, endDt));
         int totalCount = periodItems.size();
 
         List<TrendItem> highlights = periodItems.stream()
@@ -84,7 +90,20 @@ public class WeeklyReportService {
             String aiSummary = generateAiSummary(periodStart, periodEnd, highlights);
 
             // 3단계: 결과 저장 (트랜잭션)
-            saveReport(periodStart, periodEnd, totalCount, highlightsJson, categoryStatsJson, aiSummary);
+            TransactionTemplate txWrite = new TransactionTemplate(transactionManager);
+            txWrite.executeWithoutResult(status -> {
+                WeeklyReport report = WeeklyReport.builder()
+                    .periodStart(periodStart)
+                    .periodEnd(periodEnd)
+                    .totalCount(totalCount)
+                    .highlightsJson(highlightsJson)
+                    .categoryStatsJson(categoryStatsJson)
+                    .aiSummary(aiSummary)
+                    .aiModel(claudeModel)
+                    .generatedAt(LocalDateTime.now())
+                    .build();
+                weeklyReportRepository.save(report);
+            });
 
             evictWeeklyReportCache();
             log.info("주간 리포트 생성 완료: {} ~ {}, 총 {}건, 하이라이트 {}건",
@@ -94,30 +113,6 @@ public class WeeklyReportService {
             log.error("주간 리포트 생성 실패: {}", e.getMessage(), e);
             throw new RuntimeException("주간 리포트 생성 실패", e);
         }
-    }
-
-    @Transactional(readOnly = true)
-    List<TrendItem> queryPeriodItems(LocalDateTime start, LocalDateTime end) {
-        return trendItemRepository
-            .findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
-                TrendItem.AnalysisStatus.DONE, start, end);
-    }
-
-    @Transactional
-    void saveReport(LocalDate periodStart, LocalDate periodEnd, int totalCount,
-                    String highlightsJson, String categoryStatsJson, String aiSummary) {
-        WeeklyReport report = WeeklyReport.builder()
-            .periodStart(periodStart)
-            .periodEnd(periodEnd)
-            .totalCount(totalCount)
-            .highlightsJson(highlightsJson)
-            .categoryStatsJson(categoryStatsJson)
-            .aiSummary(aiSummary)
-            .aiModel(claudeModel)
-            .generatedAt(LocalDateTime.now())
-            .build();
-
-        weeklyReportRepository.save(report);
     }
 
     private Map<String, Map<String, Object>> buildCategoryStats(List<TrendItem> items) {
@@ -222,13 +217,14 @@ public class WeeklyReportService {
             });
     }
 
-    @CacheEvict(value = "weekly-report", allEntries = true)
-    @Transactional
     public void regenerateReport(LocalDate date) {
         LocalDate periodStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate periodEnd = periodStart.plusDays(6);
 
-        weeklyReportRepository.deleteByPeriodStartAndPeriodEnd(periodStart, periodEnd);
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        tx.executeWithoutResult(status ->
+            weeklyReportRepository.deleteByPeriodStartAndPeriodEnd(periodStart, periodEnd));
+
         generateForPeriod(periodStart, periodEnd);
     }
 }
