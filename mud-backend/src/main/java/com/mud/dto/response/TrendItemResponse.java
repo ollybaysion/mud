@@ -27,7 +27,8 @@ public record TrendItemResponse(
 ) {
     public static TrendItemResponse from(TrendItem item) {
         Map<String, Integer> scoring = null;
-        if (item.getScoringRelevance() != null) {
+        if (item.getScoringRelevance() != null && item.getScoringTimeliness() != null
+                && item.getScoringActionability() != null && item.getScoringImpact() != null) {
             scoring = Map.of(
                 "relevance", item.getScoringRelevance(),
                 "timeliness", item.getScoringTimeliness(),

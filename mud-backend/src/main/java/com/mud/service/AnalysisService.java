@@ -206,7 +206,11 @@ public class AnalysisService {
         if (response == null) throw new RuntimeException("Claude API returned null");
 
         String text = extractResponseText(response);
-        return parseBatchResult(text, batch.size());
+        List<AnalysisResult> results = parseBatchResult(text, batch.size());
+        if (results.isEmpty()) {
+            throw new RuntimeException("Claude 응답 파싱 실패: 결과가 비어있습니다");
+        }
+        return results;
     }
 
     private String buildBatchPrompt(List<TrendItem> batch) {
@@ -278,11 +282,7 @@ public class AnalysisService {
 
     private List<AnalysisResult> parseBatchResult(String text, int expectedSize) {
         try {
-            String json = text.trim()
-                .replaceAll("^```json\\s*", "")
-                .replaceAll("^```\\s*", "")
-                .replaceAll("\\s*```$", "")
-                .trim();
+            String json = text.replaceAll("(?s)^\\s*```(?:json)?\\s*|\\s*```\\s*$", "").trim();
 
             JsonNode arrayNode = objectMapper.readTree(json);
             if (!arrayNode.isArray()) {
@@ -348,18 +348,19 @@ public class AnalysisService {
 
     // --- Rescore ---
 
-    private final java.util.concurrent.atomic.AtomicInteger rescoreProcessed = new java.util.concurrent.atomic.AtomicInteger(0);
+    private final AtomicInteger rescoreProcessed = new AtomicInteger(0);
+    private final AtomicInteger rescoreFailed = new AtomicInteger(0);
     private volatile int rescoreTotal = 0;
-    private volatile boolean rescoreInProgress = false;
+    private final java.util.concurrent.atomic.AtomicBoolean rescoreInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Async
     public void rescoreExistingItems() {
-        if (rescoreInProgress) {
+        if (!rescoreInProgress.compareAndSet(false, true)) {
             log.info("재평가가 이미 진행 중입니다");
             return;
         }
-        rescoreInProgress = true;
         rescoreProcessed.set(0);
+        rescoreFailed.set(0);
 
         try {
             TransactionTemplate txRead = new TransactionTemplate(transactionManager);
@@ -428,21 +429,22 @@ public class AnalysisService {
                     break;
                 } catch (Exception e) {
                     log.error("재평가 배치 실패: {}", e.getMessage());
-                    rescoreProcessed.addAndGet(batchIds.size());
+                    rescoreFailed.addAndGet(batchIds.size());
                 }
             }
 
             trendService.evictTrendCaches();
             log.info("재평가 완료: {}/{}", rescoreProcessed.get(), rescoreTotal);
         } finally {
-            rescoreInProgress = false;
+            rescoreInProgress.set(false);
         }
     }
 
     public Map<String, Object> getRescoreStatus() {
         return Map.of(
-            "inProgress", rescoreInProgress,
+            "inProgress", rescoreInProgress.get(),
             "processed", rescoreProcessed.get(),
+            "failed", rescoreFailed.get(),
             "total", rescoreTotal
         );
     }
