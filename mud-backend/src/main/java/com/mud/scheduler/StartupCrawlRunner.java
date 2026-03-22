@@ -39,6 +39,14 @@ public class StartupCrawlRunner {
     private final NvidiaBlogCrawler nvidiaBlogCrawler;
     private final ServeTheHomeCrawler serveTheHomeCrawler;
     private final TomsHardwareCrawler tomsHardwareCrawler;
+    private final PhoronixCrawler phoronixCrawler;
+    private final TechPowerUpCrawler techPowerUpCrawler;
+    private final HackadayCrawler hackadayCrawler;
+    private final EETimesCrawler eeTimesCrawler;
+    private final SemiEngineeringCrawler semiEngineeringCrawler;
+    private final ChipsAndCheeseCrawler chipsAndCheeseCrawler;
+    private final VideoCardzCrawler videoCardzCrawler;
+    private final CNXSoftwareCrawler cnxSoftwareCrawler;
     private final AnalysisService analysisService;
 
     @Async
@@ -78,6 +86,14 @@ public class StartupCrawlRunner {
         try { all.addAll(nvidiaBlogCrawler.crawl()); }       catch (Exception e) { log.error("NVIDIA Blog 크롤 실패", e); }
         try { all.addAll(serveTheHomeCrawler.crawl()); }     catch (Exception e) { log.error("ServeTheHome 크롤 실패", e); }
         try { all.addAll(tomsHardwareCrawler.crawl()); }     catch (Exception e) { log.error("Tom's HW 크롤 실패", e); }
+        try { all.addAll(phoronixCrawler.crawl()); }         catch (Exception e) { log.error("Phoronix 크롤 실패", e); }
+        try { all.addAll(techPowerUpCrawler.crawl()); }      catch (Exception e) { log.error("TechPowerUp 크롤 실패", e); }
+        try { all.addAll(hackadayCrawler.crawl()); }         catch (Exception e) { log.error("Hackaday 크롤 실패", e); }
+        try { all.addAll(eeTimesCrawler.crawl()); }          catch (Exception e) { log.error("EE Times 크롤 실패", e); }
+        try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
+        try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
+        try { all.addAll(videoCardzCrawler.crawl()); }       catch (Exception e) { log.error("VideoCardz 크롤 실패", e); }
+        try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
