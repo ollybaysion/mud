@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { notFound } from 'next/navigation';
@@ -9,6 +10,33 @@ import { SOURCE_CONFIG, SCORE_COLORS, SCORE_LABELS } from '@/constants/sources';
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const item = await api.getTrend(Number(id)).catch(() => null);
+
+  if (!item) {
+    return { title: '트렌드를 찾을 수 없습니다' };
+  }
+
+  const description = item.koreanSummary ?? item.description?.slice(0, 160) ?? '';
+
+  return {
+    title: item.title,
+    description,
+    openGraph: {
+      title: item.title,
+      description,
+      type: 'article',
+      siteName: 'Mud - 기술 트렌드',
+    },
+    twitter: {
+      card: 'summary',
+      title: item.title,
+      description,
+    },
+  };
 }
 
 export default async function TrendDetailPage({ params }: Props) {
