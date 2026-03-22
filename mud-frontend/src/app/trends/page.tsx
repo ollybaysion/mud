@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 import { TrendGrid } from '@/components/trend/TrendGrid';
 import { Pagination } from '@/components/ui/Pagination';
 import { FilterBar } from '@/components/layout/FilterBar';
+import { FilterBarSkeleton } from '@/components/ui/Skeleton';
 import { relativeTime } from '@/lib/time';
 
 interface Props {
@@ -93,7 +94,7 @@ export default async function TrendsPage({ searchParams }: Props) {
         </div>
       )}
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<FilterBarSkeleton />}>
         <FilterBar
           currentSource={params.source}
           currentKeyword={params.keyword}

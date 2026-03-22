@@ -21,7 +21,7 @@ export function MobileNav({ children }: Props) {
       </button>
 
       {open && (
-        <div className="mobile-overlay" onClick={() => setOpen(false)}>
+        <div className="mobile-overlay" onClick={() => setOpen(false)} role="dialog" aria-modal="true" aria-label="네비게이션 메뉴">
           <div className="mobile-sidebar" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
