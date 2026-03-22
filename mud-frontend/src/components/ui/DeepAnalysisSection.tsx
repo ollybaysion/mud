@@ -125,6 +125,11 @@ export function DeepAnalysisSection({ item }: Props) {
           <>🔬 AI 심층 분석 생성</>
         )}
       </button>
+      {!loading && (
+        <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+          AI가 상세 분석을 생성합니다 (약 1~2분 소요)
+        </p>
+      )}
       {loading && progress && (
         <div style={{ marginTop: '10px' }}>
           <div style={{
