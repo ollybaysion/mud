@@ -42,9 +42,9 @@ public class HuggingFaceCrawler extends CrawlerBase {
                 if (isDuplicate(urlHash)) continue;
 
                 String title = entry.select("title").text().trim();
-                String summary = entry.select("summary").text().trim();
-                if (summary.isEmpty()) summary = entry.select("content").text().trim();
-                if (summary.length() > 400) summary = summary.substring(0, 397) + "...";
+                String rawSummary = entry.select("summary").text().trim();
+                if (rawSummary.isEmpty()) rawSummary = entry.select("content").text().trim();
+                String summary = cleanDescription(rawSummary);
 
                 String publishedStr = entry.select("published").text().trim();
                 if (publishedStr.isEmpty()) publishedStr = entry.select("updated").text().trim();

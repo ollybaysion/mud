@@ -43,10 +43,7 @@ public class PhoronixCrawler extends CrawlerBase {
                 String title = item.select("title").text().trim();
                 if (title.isEmpty()) continue;
 
-                String description = item.select("description").text().trim();
-                if (description.length() > 300) {
-                    description = description.substring(0, 297) + "...";
-                }
+                String description = cleanDescription(item.select("description").text());
 
                 LocalDateTime publishedAt = LocalDateTime.now();
                 String pubDate = item.select("pubDate").text().trim();
@@ -60,7 +57,7 @@ public class PhoronixCrawler extends CrawlerBase {
                     .originalUrl(url)
                     .urlHash(urlHash)
                     .source(TrendItem.CrawlSource.PHORONIX)
-                    .description(description.isEmpty() ? null : description)
+                    .description(description)
                     .publishedAt(publishedAt)
                     .crawledAt(LocalDateTime.now())
                     .analysisStatus(TrendItem.AnalysisStatus.PENDING)
