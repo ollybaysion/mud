@@ -36,12 +36,21 @@ const SOURCES = [
   { value: 'CNX_SOFTWARE', label: '💾 CNX Software' },
 ];
 
+const SCORE_OPTIONS = [
+  { value: '1', label: '전체 (★1+)' },
+  { value: '2', label: '참고 이상 (★2+)' },
+  { value: '3', label: '유용 이상 (★3+)' },
+  { value: '4', label: '중요 이상 (★4+)' },
+  { value: '5', label: '즉시 적용 (★5)' },
+];
+
 interface Props {
   currentSource?: string;
   currentKeyword?: string;
+  currentMinScore?: string;
 }
 
-export function FilterBar({ currentSource, currentKeyword }: Props) {
+export function FilterBar({ currentSource, currentKeyword, currentMinScore }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [keyword, setKeyword] = useState(currentKeyword ?? '');
@@ -90,6 +99,16 @@ export function FilterBar({ currentSource, currentKeyword }: Props) {
         onChange={(e) => updateParam('source', e.target.value)}
       >
         {SOURCES.map((s) => (
+          <option key={s.value} value={s.value}>{s.label}</option>
+        ))}
+      </select>
+
+      <select
+        className="source-select"
+        value={currentMinScore ?? '2'}
+        onChange={(e) => updateParam('minScore', e.target.value)}
+      >
+        {SCORE_OPTIONS.map((s) => (
           <option key={s.value} value={s.value}>{s.label}</option>
         ))}
       </select>
