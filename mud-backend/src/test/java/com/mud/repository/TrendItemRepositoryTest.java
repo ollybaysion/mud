@@ -125,8 +125,8 @@ class TrendItemRepositoryTest extends IntegrationTestBase {
     @Test
     @DisplayName("findByAnalysisStatusIn — PENDING + FAILED 조회")
     void findByStatusIn() {
-        createItem("Pending", TrendItem.CrawlSource.GITHUB, 0, TrendItem.AnalysisStatus.PENDING);
-        createItem("Failed", TrendItem.CrawlSource.GITHUB, 0, TrendItem.AnalysisStatus.FAILED);
+        createItem("Pending", TrendItem.CrawlSource.GITHUB, 1, TrendItem.AnalysisStatus.PENDING);
+        createItem("Failed", TrendItem.CrawlSource.GITHUB, 1, TrendItem.AnalysisStatus.FAILED);
         createItem("Done", TrendItem.CrawlSource.GITHUB, 4, TrendItem.AnalysisStatus.DONE);
 
         List<TrendItem> result = trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(
