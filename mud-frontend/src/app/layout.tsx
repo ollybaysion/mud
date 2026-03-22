@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { MobileNav } from '@/components/layout/MobileNav';
 import { api } from '@/lib/api';
 
 export const metadata: Metadata = {
@@ -23,7 +24,12 @@ export default async function RootLayout({
     <html lang="ko">
       <body>
         <div className="app-layout">
-          <Sidebar categories={categories} />
+          <div className="sidebar-desktop">
+            <Sidebar categories={categories} />
+          </div>
+          <MobileNav>
+            <Sidebar categories={categories} />
+          </MobileNav>
           <main className="main-content">{children}</main>
         </div>
       </body>
