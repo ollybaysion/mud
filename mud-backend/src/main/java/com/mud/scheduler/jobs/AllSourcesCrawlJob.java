@@ -3,7 +3,6 @@ package com.mud.scheduler.jobs;
 import com.mud.crawler.*;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
-import com.mud.service.TrendService;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -35,7 +34,6 @@ public class AllSourcesCrawlJob implements Job {
     @Autowired private JetBrainsCrawler jetBrainsCrawler;
     @Autowired private GeekNewsCrawler geekNewsCrawler;
     @Autowired private AnalysisService analysisService;
-    @Autowired private TrendService trendService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -60,7 +58,6 @@ public class AllSourcesCrawlJob implements Job {
             try { all.addAll(geekNewsCrawler.crawl()); }          catch (Exception e) { log.error("GeekNews 크롤 실패", e); }
 
             analysisService.analyzePendingItems();
-            trendService.evictTrendCaches();
             log.info("=== All sources crawl job finished: {} new items ===", all.size());
         } catch (Exception e) {
             log.error("All sources crawl job failed", e);

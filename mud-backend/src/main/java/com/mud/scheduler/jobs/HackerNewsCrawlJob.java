@@ -3,7 +3,6 @@ package com.mud.scheduler.jobs;
 import com.mud.crawler.HackerNewsCrawler;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
-import com.mud.service.TrendService;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -19,7 +18,6 @@ public class HackerNewsCrawlJob implements Job {
 
     @Autowired private HackerNewsCrawler crawler;
     @Autowired private AnalysisService analysisService;
-    @Autowired private TrendService trendService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -28,7 +26,6 @@ public class HackerNewsCrawlJob implements Job {
             List<TrendItem> newItems = crawler.crawl();
             if (!newItems.isEmpty()) {
                 analysisService.analyzePendingItems();
-                trendService.evictTrendCaches();
             }
             log.info("=== HackerNews crawl job finished: {} new items ===", newItems.size());
         } catch (Exception e) {

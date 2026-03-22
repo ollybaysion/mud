@@ -3,11 +3,11 @@ package com.mud.scheduler;
 import com.mud.crawler.*;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
-import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.List;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class StartupCrawlRunner implements ApplicationRunner {
+public class StartupCrawlRunner {
 
     private final HackerNewsCrawler hackerNewsCrawler;
     private final GitHubTrendingCrawler gitHubTrendingCrawler;
@@ -37,19 +37,18 @@ public class StartupCrawlRunner implements ApplicationRunner {
     private final JetBrainsCrawler jetBrainsCrawler;
     private final GeekNewsCrawler geekNewsCrawler;
     private final AnalysisService analysisService;
-    private final TrendService trendService;
 
-    @Override
-    public void run(ApplicationArguments args) {
-        log.info("=== 시작 시 초기 크롤링 실행 ===");
-        new Thread(() -> {
-            try {
-                Thread.sleep(30_000);
-                runAllCrawlers();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }, "startup-crawler").start();
+    @Async
+    @EventListener(ApplicationReadyEvent.class)
+    public void runAllCrawlersAsync() {
+        log.info("=== 시작 시 초기 크롤링 실행 (30초 후) ===");
+        try {
+            Thread.sleep(30_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        runAllCrawlers();
     }
 
     public void runAllCrawlers() {
@@ -76,6 +75,5 @@ public class StartupCrawlRunner implements ApplicationRunner {
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
-        trendService.evictTrendCaches();
     }
 }
