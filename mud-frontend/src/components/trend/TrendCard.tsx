@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { TrendItem } from '@/lib/types';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
+import { sanitizeUrl } from '@/lib/url';
 
 const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
   GITHUB: { label: 'GitHub', color: '#e2e8f0', emoji: '🐙' },
@@ -77,7 +78,7 @@ export function TrendCard({ item }: Props) {
       </div>
 
       <h3 className="trend-card-title">
-        <a href={item.originalUrl} target="_blank" rel="noopener noreferrer">
+        <a href={sanitizeUrl(item.originalUrl)} target="_blank" rel="noopener noreferrer">
           {item.title}
         </a>
       </h3>
