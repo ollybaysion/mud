@@ -8,9 +8,9 @@ import com.mud.domain.repository.WeeklyReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -32,6 +32,7 @@ public class WeeklyReportService {
     private final TrendItemRepository trendItemRepository;
     private final WebClient claudeWebClient;
     private final ObjectMapper objectMapper;
+    private final CacheManager cacheManager;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -44,7 +45,6 @@ public class WeeklyReportService {
         generateForPeriod(periodStart, periodEnd);
     }
 
-    @Transactional
     public void generateForPeriod(LocalDate periodStart, LocalDate periodEnd) {
         if (weeklyReportRepository.existsByPeriodStartAndPeriodEnd(periodStart, periodEnd)) {
             log.info("주간 리포트 이미 존재: {} ~ {}", periodStart, periodEnd);
@@ -56,31 +56,16 @@ public class WeeklyReportService {
         LocalDateTime startDt = periodStart.atStartOfDay();
         LocalDateTime endDt = periodEnd.atTime(23, 59, 59);
 
-        // 해당 기간 DONE 아이템 조회
-        List<TrendItem> periodItems = trendItemRepository
-            .findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
-                TrendItem.AnalysisStatus.DONE, startDt, endDt);
-
+        // 1단계: 데이터 조회 (트랜잭션)
+        List<TrendItem> periodItems = queryPeriodItems(startDt, endDt);
         int totalCount = periodItems.size();
 
-        // 상위 15건 선별 (relevanceScore >= 4)
         List<TrendItem> highlights = periodItems.stream()
             .filter(item -> item.getRelevanceScore() != null && item.getRelevanceScore() >= 4)
             .limit(15)
             .toList();
 
-        // 카테고리별 통계
-        Map<String, Map<String, Object>> categoryStats = new LinkedHashMap<>();
-        periodItems.stream()
-            .filter(item -> item.getCategory() != null)
-            .collect(Collectors.groupingBy(item -> item.getCategory().getSlug()))
-            .forEach((slug, items) -> {
-                double avgScore = items.stream()
-                    .filter(i -> i.getRelevanceScore() != null)
-                    .mapToInt(TrendItem::getRelevanceScore)
-                    .average().orElse(0);
-                categoryStats.put(slug, Map.of("count", items.size(), "avgScore", Math.round(avgScore * 10) / 10.0));
-            });
+        Map<String, Map<String, Object>> categoryStats = buildCategoryStats(periodItems);
 
         try {
             String highlightsJson = objectMapper.writeValueAsString(highlights.stream().map(item -> Map.of(
@@ -95,27 +80,59 @@ public class WeeklyReportService {
 
             String categoryStatsJson = objectMapper.writeValueAsString(categoryStats);
 
-            // AI 요약 생성
+            // 2단계: Claude API 호출 (트랜잭션 밖)
             String aiSummary = generateAiSummary(periodStart, periodEnd, highlights);
 
-            WeeklyReport report = WeeklyReport.builder()
-                .periodStart(periodStart)
-                .periodEnd(periodEnd)
-                .totalCount(totalCount)
-                .highlightsJson(highlightsJson)
-                .categoryStatsJson(categoryStatsJson)
-                .aiSummary(aiSummary)
-                .aiModel(claudeModel)
-                .generatedAt(LocalDateTime.now())
-                .build();
+            // 3단계: 결과 저장 (트랜잭션)
+            saveReport(periodStart, periodEnd, totalCount, highlightsJson, categoryStatsJson, aiSummary);
 
-            weeklyReportRepository.save(report);
+            evictWeeklyReportCache();
             log.info("주간 리포트 생성 완료: {} ~ {}, 총 {}건, 하이라이트 {}건",
                 periodStart, periodEnd, totalCount, highlights.size());
 
         } catch (Exception e) {
             log.error("주간 리포트 생성 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("주간 리포트 생성 실패", e);
         }
+    }
+
+    @Transactional(readOnly = true)
+    List<TrendItem> queryPeriodItems(LocalDateTime start, LocalDateTime end) {
+        return trendItemRepository
+            .findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
+                TrendItem.AnalysisStatus.DONE, start, end);
+    }
+
+    @Transactional
+    void saveReport(LocalDate periodStart, LocalDate periodEnd, int totalCount,
+                    String highlightsJson, String categoryStatsJson, String aiSummary) {
+        WeeklyReport report = WeeklyReport.builder()
+            .periodStart(periodStart)
+            .periodEnd(periodEnd)
+            .totalCount(totalCount)
+            .highlightsJson(highlightsJson)
+            .categoryStatsJson(categoryStatsJson)
+            .aiSummary(aiSummary)
+            .aiModel(claudeModel)
+            .generatedAt(LocalDateTime.now())
+            .build();
+
+        weeklyReportRepository.save(report);
+    }
+
+    private Map<String, Map<String, Object>> buildCategoryStats(List<TrendItem> items) {
+        Map<String, Map<String, Object>> stats = new LinkedHashMap<>();
+        items.stream()
+            .filter(item -> item.getCategory() != null)
+            .collect(Collectors.groupingBy(item -> item.getCategory().getSlug()))
+            .forEach((slug, catItems) -> {
+                double avgScore = catItems.stream()
+                    .filter(i -> i.getRelevanceScore() != null)
+                    .mapToInt(TrendItem::getRelevanceScore)
+                    .average().orElse(0);
+                stats.put(slug, Map.of("count", catItems.size(), "avgScore", Math.round(avgScore * 10) / 10.0));
+            });
+        return stats;
     }
 
     private String generateAiSummary(LocalDate periodStart, LocalDate periodEnd, List<TrendItem> highlights) {
@@ -177,6 +194,11 @@ public class WeeklyReportService {
         }
     }
 
+    private void evictWeeklyReportCache() {
+        var cache = cacheManager.getCache("weekly-report");
+        if (cache != null) cache.clear();
+    }
+
     @Cacheable(value = "weekly-report")
     @Transactional(readOnly = true)
     public Optional<WeeklyReport> getLatestReport() {
@@ -188,7 +210,6 @@ public class WeeklyReportService {
         return weeklyReportRepository.findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(date, date);
     }
 
-    @Transactional
     public WeeklyReport getOrGenerateReport(LocalDate date) {
         LocalDate periodStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         LocalDate periodEnd = periodStart.plusDays(6);
