@@ -69,9 +69,9 @@ export function TrendCard({ item }: Props) {
       {item.keywords.length > 0 && (
         <div className="trend-card-tags">
           {item.keywords.slice(0, 5).map((kw) => (
-            <span key={kw} className="tag">
+            <Link key={kw} href={`/trends?keyword=${encodeURIComponent(kw)}`} className="tag tag-link">
               {kw}
-            </span>
+            </Link>
           ))}
         </div>
       )}

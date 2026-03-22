@@ -192,17 +192,14 @@ class AnalysisServiceScoringTest {
     @Test
     @DisplayName("rescore 중복 실행 방지 — 이미 진행 중이면 스킵")
     void rescoreDuplicatePrevention() {
-        // 첫 번째 호출용 락 + 빈 결과
         when(redisLockRegistry.obtain("analysis:rescore")).thenReturn(new ReentrantLock());
         when(transactionManager.getTransaction(any()))
             .thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
-        when(trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(any()))
+        when(trendItemRepository.findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(any()))
             .thenReturn(List.of());
 
-        // 첫 번째 호출 — 성공 (빈 리스트라 즉시 완료)
         service.rescoreExistingItems();
 
-        // 상태 확인
         Map<String, Object> status = service.getRescoreStatus();
         assertThat(status.get("total")).isEqualTo(0);
     }
