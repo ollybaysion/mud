@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { DeepAnalysisSection } from '@/components/ui/DeepAnalysisSection';
+import { sanitizeUrl } from '@/lib/url';
 
 const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji: string }> = {
   GITHUB: { label: 'GitHub', color: '#e2e8f0', emoji: '🐙' },
@@ -125,7 +126,7 @@ export default async function TrendDetailPage({ params }: Props) {
 
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
         <a
-          href={item.originalUrl}
+          href={sanitizeUrl(item.originalUrl)}
           target="_blank"
           rel="noopener noreferrer"
           className="page-btn"
