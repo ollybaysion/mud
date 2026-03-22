@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Category } from '@/lib/types';
 
 interface Props {
@@ -28,7 +29,10 @@ export function Sidebar({ categories }: Props) {
   return (
     <aside className="sidebar">
       <div className="header">
-        <div className="header-logo">⚗️ Mud</div>
+        <div className="header-logo">
+          <Image src="/favicon.svg" alt="Mud" width={24} height={24} style={{ verticalAlign: 'middle', marginRight: '6px', borderRadius: '4px' }} />
+          Mud
+        </div>
         <div className="header-tagline">기술 트렌드 큐레이션</div>
       </div>
 
