@@ -19,8 +19,18 @@ configurations {
     }
 }
 
+ext {
+    testcontainersVersion = '1.19.7'
+}
+
 repositories {
     mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+    }
 }
 
 dependencies {
@@ -62,15 +72,35 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'com.redis:testcontainers-redis:2.2.2'
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
     finalizedBy jacocoTestReport
 }
 
+tasks.register('integrationTest', Test) {
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    description = 'Runs integration tests (requires Docker)'
+    group = 'verification'
+}
+
+tasks.register('allTests') {
+    dependsOn test, integrationTest
+    finalizedBy jacocoTestReport
+    description = 'Runs all tests (unit + integration)'
+    group = 'verification'
+}
+
 jacocoTestReport {
-    dependsOn test
+    executionData fileTree(dir: layout.buildDirectory, includes: ['jacoco/*.exec'])
     reports {
         xml.required = true
         html.required = true
@@ -79,7 +109,6 @@ jacocoTestReport {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, excludes: [
                 '**/crawler/*Crawler.class',   // 크롤러 (외부 HTTP 의존)
-                '**/dto/**',                    // DTO
                 '**/domain/entity/**',          // JPA 엔티티
                 '**/config/Redis*',             // Redis 설정
                 '**/config/Web*',               // Web 설정
@@ -94,7 +123,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.10  // 10% — 현재 15% 수준, 테스트 추가 시 점진적으로 상향
+                minimum = 0.50  // 50% — 현재 60% 수준
             }
         }
     }

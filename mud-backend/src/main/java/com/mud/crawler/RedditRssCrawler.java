@@ -51,10 +51,7 @@ public class RedditRssCrawler extends CrawlerBase {
                     String title = entry.select("title").text().trim();
                     if (title.isEmpty()) continue;
 
-                    String content = entry.select("content").text().trim();
-                    String description = content.length() > 300
-                        ? content.substring(0, 297) + "..."
-                        : content;
+                    String description = cleanDescription(entry.select("content").text());
 
                     String publishedStr = entry.select("updated").text().trim();
                     LocalDateTime publishedAt = LocalDateTime.now();

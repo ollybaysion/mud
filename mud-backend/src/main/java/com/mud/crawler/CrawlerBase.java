@@ -46,7 +46,7 @@ public abstract class CrawlerBase {
             .get(), url);
     }
 
-    private Document fetchWithRetry(FetchAction action, String url) throws IOException {
+    Document fetchWithRetry(FetchAction action, String url) throws IOException {
         IOException lastException = null;
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -73,8 +73,16 @@ public abstract class CrawlerBase {
     }
 
     @FunctionalInterface
-    private interface FetchAction {
+    interface FetchAction {
         Document execute() throws IOException;
+    }
+
+    /**
+     * HTML 태그를 제거하고 plain text로 변환. truncate하지 않고 전체 저장.
+     */
+    protected String cleanDescription(String html) {
+        if (html == null || html.isBlank()) return null;
+        return Jsoup.parse(html).text().trim();
     }
 
     protected String computeUrlHash(String url) {

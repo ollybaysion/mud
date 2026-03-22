@@ -76,6 +76,25 @@ jobs:
           CLAUDE_API_KEY: test-key
         run: ./gradlew jacocoTestCoverageVerification --no-daemon
 
+      - name: Print Coverage
+        if: always()
+        working-directory: mud-backend
+        run: |
+          XML="build/reports/jacoco/test/jacocoTestReport.xml"
+          if [ -f "$XML" ]; then
+            MISSED=$(grep -oP 'type="INSTRUCTION" missed="\K[0-9]+' "$XML" | tail -1)
+            COVERED=$(grep -oP 'type="INSTRUCTION"[^/]*covered="\K[0-9]+' "$XML" | tail -1)
+            if [ -n "$MISSED" ] && [ -n "$COVERED" ]; then
+              TOTAL=$((MISSED + COVERED))
+              PCT=$(awk "BEGIN { printf \"%.1f\", 100*$COVERED/$TOTAL }")
+              echo "📊 Code Coverage: ${PCT}% ($COVERED/$TOTAL instructions)"
+            else
+              echo "⚠️ Could not parse coverage from XML"
+            fi
+          else
+            echo "⚠️ Jacoco XML report not found"
+          fi
+
   frontend:
     name: Frontend Build & Lint
     runs-on: ubuntu-latest
