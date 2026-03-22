@@ -15,11 +15,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
-class AnalysisServicePartitionTest {
+class AnalysisServiceExtractTest {
 
     @Mock private WebClient claudeWebClient;
     @Mock private TrendItemRepository trendItemRepository;
@@ -32,31 +34,35 @@ class AnalysisServicePartitionTest {
 
     @InjectMocks private AnalysisService service;
 
-    @SuppressWarnings("unchecked")
-    private <T> List<List<T>> partition(List<T> list, int size) {
-        return ReflectionTestUtils.invokeMethod(service, "partition", list, size);
+    private String extract(Map<?, ?> response) {
+        return ReflectionTestUtils.invokeMethod(service, "extractResponseText", response);
     }
 
     @Test
-    @DisplayName("균등 분할: 10개 → size=5 → [5,5]")
-    void evenPartition() {
-        List<List<Integer>> result = partition(List.of(1,2,3,4,5,6,7,8,9,10), 5);
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0)).hasSize(5);
+    @DisplayName("정상 응답에서 텍스트 추출")
+    void extractsTextFromValidResponse() {
+        Map<String, Object> response = Map.of(
+            "content", List.of(Map.of("type", "text", "text", "분석 결과"))
+        );
+        assertThat(extract(response)).isEqualTo("분석 결과");
     }
 
     @Test
-    @DisplayName("불균등 분할: 10개 → size=3 → [3,3,3,1]")
-    void unevenPartition() {
-        List<List<Integer>> result = partition(List.of(1,2,3,4,5,6,7,8,9,10), 3);
-        assertThat(result).hasSize(4);
-        assertThat(result.get(3)).hasSize(1);
+    @DisplayName("content가 빈 리스트 → RuntimeException")
+    void throwsOnEmptyContent() {
+        Map<String, Object> response = Map.of("content", List.of());
+        assertThatThrownBy(() -> extract(response)).isInstanceOf(RuntimeException.class);
     }
 
     @Test
-    @DisplayName("빈 리스트 → 빈 결과")
-    void emptyList() {
-        List<List<Integer>> result = partition(List.of(), 5);
-        assertThat(result).isEmpty();
+    @DisplayName("여러 content 블록 중 첫 번째 사용")
+    void extractFirstContentBlock() {
+        Map<String, Object> response = Map.of(
+            "content", List.of(
+                Map.of("type", "text", "text", "첫 번째"),
+                Map.of("type", "text", "text", "두 번째")
+            )
+        );
+        assertThat(extract(response)).isEqualTo("첫 번째");
     }
 }
