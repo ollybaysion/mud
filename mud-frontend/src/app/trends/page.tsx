@@ -2,9 +2,14 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { TrendGrid } from '@/components/trend/TrendGrid';
+import { Pagination } from '@/components/ui/Pagination';
+import { FilterBar } from '@/components/layout/FilterBar';
+import { FilterBarSkeleton } from '@/components/ui/Skeleton';
+import { relativeTime } from '@/lib/time';
 
 export const metadata: Metadata = {
-  title: '기술 트렌드 | Mud',
+  title: '기술 트렌드',
   description: '18개 소스에서 수집한 최신 기술 트렌드를 AI가 분석하여 제공합니다.',
   openGraph: {
     title: 'Mud - 기술 트렌드 큐레이션',
@@ -13,11 +18,6 @@ export const metadata: Metadata = {
     siteName: 'Mud',
   },
 };
-import { TrendGrid } from '@/components/trend/TrendGrid';
-import { Pagination } from '@/components/ui/Pagination';
-import { FilterBar } from '@/components/layout/FilterBar';
-import { FilterBarSkeleton } from '@/components/ui/Skeleton';
-import { relativeTime } from '@/lib/time';
 
 interface Props {
   searchParams: Promise<{

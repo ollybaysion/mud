@@ -17,13 +17,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const item = await api.getTrend(Number(id)).catch(() => null);
 
   if (!item) {
-    return { title: '트렌드를 찾을 수 없습니다 | Mud' };
+    return { title: '트렌드를 찾을 수 없습니다' };
   }
 
   const description = item.koreanSummary ?? item.description?.slice(0, 160) ?? '';
 
   return {
-    title: `${item.title} | Mud`,
+    title: item.title,
     description,
     openGraph: {
       title: item.title,
