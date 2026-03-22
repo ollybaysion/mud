@@ -18,7 +18,7 @@ public record TrendItemResponse(
     CategoryResponse category,
     Integer relevanceScore,
     List<String> keywords,
-    Map<String, Integer> scoring,
+    Map<String, Short> scoring,
     String topicTag,
     LocalDateTime publishedAt,
     LocalDateTime crawledAt,
@@ -26,7 +26,7 @@ public record TrendItemResponse(
     String githubLanguage
 ) {
     public static TrendItemResponse from(TrendItem item) {
-        Map<String, Integer> scoring = null;
+        Map<String, Short> scoring = null;
         if (item.getScoringRelevance() != null && item.getScoringTimeliness() != null
                 && item.getScoringActionability() != null && item.getScoringImpact() != null) {
             scoring = Map.of(
