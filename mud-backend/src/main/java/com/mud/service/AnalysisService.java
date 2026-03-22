@@ -159,10 +159,10 @@ public class AnalysisService {
                         else if (totalScore <= 7) finalScore = 4;
                         else finalScore = 5;
 
-                        item.setScoringRelevance(result.scoringRelevance());
-                        item.setScoringTimeliness(timeliness);
-                        item.setScoringActionability(result.scoringActionability());
-                        item.setScoringImpact(result.scoringImpact());
+                        item.setScoringRelevance((short) result.scoringRelevance());
+                        item.setScoringTimeliness((short) timeliness);
+                        item.setScoringActionability((short) result.scoringActionability());
+                        item.setScoringImpact((short) result.scoringImpact());
                         item.setRelevanceScore(finalScore);
                         item.setTopicTag(result.topicTag());
                         categoryRepository.findBySlug(result.categorySlug())
@@ -431,10 +431,10 @@ public class AnalysisService {
                                 item.setKoreanSummary(result.koreanSummary());
                                 item.setRelevanceScore(finalScore);
                                 item.setKeywords(result.keywords());
-                                item.setScoringRelevance(result.scoringRelevance());
-                                item.setScoringTimeliness(timeliness);
-                                item.setScoringActionability(result.scoringActionability());
-                                item.setScoringImpact(result.scoringImpact());
+                                item.setScoringRelevance((short) result.scoringRelevance());
+                                item.setScoringTimeliness((short) timeliness);
+                                item.setScoringActionability((short) result.scoringActionability());
+                                item.setScoringImpact((short) result.scoringImpact());
                                 item.setTopicTag(result.topicTag());
                                 categoryRepository.findBySlug(result.categorySlug())
                                     .ifPresent(item::setCategory);
