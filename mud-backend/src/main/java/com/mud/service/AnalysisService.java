@@ -16,6 +16,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.integration.redis.util.RedisLockRegistry;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 
 @Service
 @Slf4j
@@ -40,6 +43,7 @@ public class AnalysisService {
     private final PlatformTransactionManager transactionManager;
     private final CacheManager cacheManager;
     private final TrendService trendService;
+    private final RedisLockRegistry redisLockRegistry;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -71,30 +75,41 @@ public class AnalysisService {
 
     @Async
     public void analyzePendingItems() {
-        List<TrendItem> pendingItems = trendItemRepository
-            .findByAnalysisStatusInOrderByCrawledAtAsc(
-                List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED));
+        Lock lock = redisLockRegistry.obtain("analysis:pending");
 
-        if (pendingItems.isEmpty()) {
-            log.debug("No pending or failed items to analyze");
+        if (!lock.tryLock()) {
+            log.info("분석이 이미 진행 중입니다 (락 보유 중), 스킵합니다");
             return;
         }
 
-        List<List<TrendItem>> batches = partition(pendingItems, batchSize);
-        log.info("Starting batch analysis: {} items in {} batches (batchSize={}, concurrency={})",
-            pendingItems.size(), batches.size(), batchSize, concurrency);
+        try {
+            List<TrendItem> pendingItems = trendItemRepository
+                .findByAnalysisStatusInOrderByCrawledAtAsc(
+                    List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED));
 
-        AtomicInteger analyzedBatches = new AtomicInteger();
+            if (pendingItems.isEmpty()) {
+                log.debug("No pending or failed items to analyze");
+                return;
+            }
 
-        List<CompletableFuture<Void>> futures = batches.stream()
-            .map(batch -> CompletableFuture.runAsync(
-                () -> analyzeBatch(batch, analyzedBatches, batches.size()), executor))
-            .toList();
+            List<List<TrendItem>> batches = partition(pendingItems, batchSize);
+            log.info("Starting batch analysis: {} items in {} batches (batchSize={}, concurrency={})",
+                pendingItems.size(), batches.size(), batchSize, concurrency);
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+            AtomicInteger analyzedBatches = new AtomicInteger();
 
-        log.info("Analysis complete: {}/{} batches processed", analyzedBatches.get(), batches.size());
-        trendService.evictTrendCaches();
+            List<CompletableFuture<Void>> futures = batches.stream()
+                .map(batch -> CompletableFuture.runAsync(
+                    () -> analyzeBatch(batch, analyzedBatches, batches.size()), executor))
+                .toList();
+
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            log.info("Analysis complete: {}/{} batches processed", analyzedBatches.get(), batches.size());
+            trendService.evictTrendCaches();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private void analyzeBatch(List<TrendItem> batch, AtomicInteger analyzedBatches, int totalBatches) {
