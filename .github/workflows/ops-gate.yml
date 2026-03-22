@@ -31,14 +31,23 @@ jobs:
             PR_NUMBER=${{ github.event.pull_request.number }}
             PR_BODY=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json body -q '.body')
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
+            HEAD_BRANCH=${{ github.event.pull_request.head.ref }}
           else
             PR_NUMBER=${{ github.event.issue.number }}
             PR_BODY=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json body -q '.body')
             HEAD_SHA=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefOid -q '.headRefOid')
+            HEAD_BRANCH=$(gh pr view $PR_NUMBER --repo ${{ github.repository }} --json headRefName -q '.headRefName')
           fi
 
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+
+          # hotfix 브랜치는 gate 바이패스
+          if [[ "$HEAD_BRANCH" == hotfix/* ]]; then
+            echo "is_hotfix=true" >> "$GITHUB_OUTPUT"
+            echo "🔥 Hotfix 브랜치 감지: $HEAD_BRANCH — gate 바이패스"
+          fi
 
           # PR body에서 연결된 이슈 번호 추출 (Closes #XX, Fixes #XX, Resolves #XX)
           ISSUE_NUMBERS=$(echo "$PR_BODY" | grep -oiP '(?:closes|fixes|resolves)\s+#\K\d+' | tr '\n' ' ')
@@ -48,7 +57,24 @@ jobs:
             echo "no_linked_issue=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # hotfix 브랜치는 즉시 양쪽 gate 통과
+      - name: Hotfix bypass
+        if: steps.pr.outputs.is_hotfix == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "🔥 Hotfix — Ops gate + Code Review gate 자동 통과"
+          gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+            -f state=success \
+            -f description="Hotfix — gate 바이패스" \
+            -f context="ops-gate/approval"
+          gh api repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head_sha }} \
+            -f state=success \
+            -f description="Hotfix — gate 바이패스" \
+            -f context="code-review/approval"
+
       - name: Check Ops approval on linked issues
+        if: steps.pr.outputs.is_hotfix != 'true'
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,6 +115,7 @@ jobs:
 
       - name: Check Code Review approval
         id: review
+        if: steps.pr.outputs.is_hotfix != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -125,6 +152,7 @@ jobs:
           echo "approved=false" >> "$GITHUB_OUTPUT"
 
       - name: Report results
+        if: steps.pr.outputs.is_hotfix != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
