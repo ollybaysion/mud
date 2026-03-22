@@ -27,7 +27,7 @@ public class AdminController {
     @PostMapping("/crawl")
     public ResponseEntity<Map<String, String>> triggerCrawl() {
         log.info("수동 크롤링 트리거");
-        new Thread(crawlRunner::runAllCrawlers, "manual-crawler").start();
+        crawlRunner.runAllCrawlersAsync();
         return ResponseEntity.ok(Map.of("status", "크롤링 시작됨 - 백그라운드에서 실행 중"));
     }
 
@@ -41,10 +41,8 @@ public class AdminController {
     @PostMapping("/analyze")
     public ResponseEntity<Map<String, String>> triggerAnalysis() {
         log.info("수동 분석 트리거");
-        new Thread(() -> {
-            analysisService.analyzePendingItems();
-            trendService.evictTrendCaches();
-        }, "manual-analyzer").start();
+        analysisService.analyzePendingItems();
+        trendService.evictTrendCaches();
         return ResponseEntity.ok(Map.of("status", "분석 시작됨 - 백그라운드에서 실행 중"));
     }
 }
