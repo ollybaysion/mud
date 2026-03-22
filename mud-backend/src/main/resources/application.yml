@@ -74,6 +74,6 @@ claude:
 
 logging:
   level:
-    com.mud: DEBUG
+    com.mud: ${LOG_LEVEL:INFO}
     org.springframework.cache: DEBUG
     org.flywaydb: INFO
