@@ -188,6 +188,19 @@ public class WeeklyReportService {
         return weeklyReportRepository.findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(date, date);
     }
 
+    @Transactional
+    public WeeklyReport getOrGenerateReport(LocalDate date) {
+        LocalDate periodStart = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate periodEnd = periodStart.plusDays(6);
+
+        return weeklyReportRepository.findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(date, date)
+            .orElseGet(() -> {
+                generateForPeriod(periodStart, periodEnd);
+                return weeklyReportRepository.findByPeriodStartLessThanEqualAndPeriodEndGreaterThanEqual(date, date)
+                    .orElse(null);
+            });
+    }
+
     @CacheEvict(value = "weekly-report", allEntries = true)
     @Transactional
     public void regenerateReport(LocalDate date) {

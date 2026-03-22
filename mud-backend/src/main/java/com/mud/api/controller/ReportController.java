@@ -29,11 +29,25 @@ public class ReportController {
             .orElse(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/api/admin/reports/generate")
+    public ResponseEntity<?> generateReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        var report = weeklyReportService.getOrGenerateReport(date);
+        if (report == null) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "리포트 생성 실패"));
+        }
+        return ResponseEntity.ok(WeeklyReportResponse.from(report));
+    }
+
     @PostMapping("/api/admin/reports/regenerate")
-    public ResponseEntity<Map<String, String>> regenerateReport(
+    public ResponseEntity<?> regenerateReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
         weeklyReportService.regenerateReport(date);
-        return ResponseEntity.ok(Map.of("status", "주간 리포트 재생성 완료"));
+        var report = weeklyReportService.getReportByDate(date);
+        return report
+            .map(r -> ResponseEntity.ok((Object) WeeklyReportResponse.from(r)))
+            .orElse(ResponseEntity.internalServerError().body(Map.of("error", "리포트 재생성 실패")));
     }
 }
