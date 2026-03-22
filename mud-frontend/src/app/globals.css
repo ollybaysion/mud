@@ -420,6 +420,23 @@ a:hover { color: var(--color-accent-hover); }
   to { transform: rotate(360deg); }
 }
 
+/* Skeleton */
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-line {
+  display: block;
+  background: var(--color-border);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
 /* Mobile nav */
 .mobile-menu-btn {
   display: none;

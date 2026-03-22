@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Markdown from 'react-markdown';
 import type { TrendItem } from '@/lib/types';
 
@@ -17,14 +17,66 @@ interface Props {
 export function DeepAnalysisSection({ item }: Props) {
   const [analysis, setAnalysis] = useState<string | null>(item.deepAnalysis);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<{ stage: string; percent: number } | null>(null);
+  const [serverPercent, setServerPercent] = useState(0);
+  const [displayPercent, setDisplayPercent] = useState(0);
+  const [stage, setStage] = useState('');
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const fakeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    fakeTimerRef.current = null;
+    elapsedTimerRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+
+    elapsedTimerRef.current = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    if (!loading || serverPercent < 30) return;
+
+    fakeTimerRef.current = setInterval(() => {
+      setDisplayPercent((prev) => {
+        if (prev >= 90) return 90;
+        const increment = 2 + Math.random() * 3;
+        return Math.min(prev + increment, 90);
+      });
+    }, 2000);
+
+    return () => {
+      if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
+    };
+  }, [loading, serverPercent]);
+
+  useEffect(() => {
+    if (serverPercent === 100) {
+      cleanup();
+      setDisplayPercent(100);
+    } else if (serverPercent > displayPercent) {
+      setDisplayPercent(serverPercent);
+    }
+  }, [serverPercent, displayPercent, cleanup]);
 
   const handleGenerate = () => {
     setLoading(true);
     setError(null);
-    setProgress(null);
+    setServerPercent(0);
+    setDisplayPercent(0);
+    setStage('');
+    setElapsed(0);
 
     const es = new EventSource(`/api/trends/${item.id}/deep-analysis/stream`);
     eventSourceRef.current = es;
@@ -32,16 +84,17 @@ export function DeepAnalysisSection({ item }: Props) {
     es.addEventListener('progress', (e) => {
       try {
         const data = JSON.parse(e.data);
-        setProgress(data);
+        setServerPercent(data.percent);
+        setStage(data.stage);
       } catch {
-        // ignore parse errors
+        // ignore
       }
     });
 
     es.addEventListener('result', (e) => {
       setAnalysis(e.data);
       setLoading(false);
-      setProgress(null);
+      cleanup();
       es.close();
     });
 
@@ -57,9 +110,23 @@ export function DeepAnalysisSection({ item }: Props) {
         setError('서버 연결이 끊어졌습니다.');
       }
       setLoading(false);
-      setProgress(null);
+      cleanup();
       es.close();
     });
+  };
+
+  const handleCancel = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    setLoading(false);
+    cleanup();
+    setError(null);
+  };
+
+  const formatElapsed = (s: number) => {
+    if (s < 60) return `${s}초`;
+    return `${Math.floor(s / 60)}분 ${s % 60}초`;
   };
 
   if (analysis) {
@@ -98,39 +165,58 @@ export function DeepAnalysisSection({ item }: Props) {
           {error}
         </div>
       )}
-      <button
-        type="button"
-        onClick={handleGenerate}
-        disabled={loading}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '10px 20px',
-          background: loading ? 'var(--color-border)' : '#a855f722',
-          color: loading ? 'var(--color-text-muted)' : '#a855f7',
-          border: '1px solid #a855f744',
-          borderRadius: '6px',
-          fontWeight: 500,
-          fontSize: '14px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {loading ? (
-          <>
-            <span className="deep-analysis-spinner" />
-            {progress ? STAGE_LABELS[progress.stage] ?? '분석 중...' : '연결 중...'}
-          </>
-        ) : (
-          <>🔬 AI 심층 분석 생성</>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px',
+            background: loading ? 'var(--color-border)' : '#a855f722',
+            color: loading ? 'var(--color-text-muted)' : '#a855f7',
+            border: '1px solid #a855f744',
+            borderRadius: '6px',
+            fontWeight: 500,
+            fontSize: '14px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? (
+            <>
+              <span className="deep-analysis-spinner" />
+              {stage ? STAGE_LABELS[stage] ?? '분석 중...' : '연결 중...'}
+            </>
+          ) : (
+            <>🔬 AI 심층 분석 생성</>
+          )}
+        </button>
+        {loading && (
+          <button
+            type="button"
+            onClick={handleCancel}
+            style={{
+              padding: '10px 16px',
+              background: 'none',
+              color: 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '6px',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            취소
+          </button>
         )}
-      </button>
+      </div>
       {!loading && (
         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
           AI가 상세 분석을 생성합니다 (약 1~2분 소요)
         </p>
       )}
-      {loading && progress && (
+      {loading && (
         <div style={{ marginTop: '10px' }}>
           <div style={{
             width: '100%',
@@ -140,15 +226,16 @@ export function DeepAnalysisSection({ item }: Props) {
             overflow: 'hidden',
           }}>
             <div style={{
-              width: `${progress.percent}%`,
+              width: `${displayPercent}%`,
               height: '100%',
               background: '#a855f7',
               borderRadius: '2px',
-              transition: 'width 0.3s ease',
+              transition: 'width 0.5s ease',
             }} />
           </div>
           <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
-            {progress.percent}% 완료
+            {Math.round(displayPercent)}% 완료 · {formatElapsed(elapsed)} 경과
+            {displayPercent < 90 && ' · 보통 1~2분 소요됩니다'}
           </p>
         </div>
       )}
