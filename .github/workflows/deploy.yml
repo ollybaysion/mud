@@ -1,15 +1,12 @@
-name: Deploy to Railway
+name: Post-merge Ops Gate
 
 on:
   push:
     branches: [main]
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: true
-
 jobs:
-  # Ops 승인 없이 머지된 직접 push 방지 (branch protection 우회 대비)
+  # Ops 승인 없이 머지된 직접 push 감지 (branch protection 우회 대비)
+  # Railway 배포는 Railway 자체 자동 배포로 처리 (main push 감지)
   verify-ops-gate:
     name: Verify Ops Approval
     runs-on: ubuntu-latest
@@ -40,39 +37,9 @@ jobs:
             -q '[.[] | select(.context == "ops-gate/approval")] | .[0].state' 2>/dev/null || echo "")
 
           if [ "$OPS_STATUS" = "success" ]; then
-            echo "✅ Ops 승인 확인됨. 배포 진행."
+            echo "✅ Ops 승인 확인됨."
           else
-            echo "🚫 Ops 승인이 없는 PR이 머지되었습니다. 배포를 차단합니다."
+            echo "🚫 Ops 승인이 없는 PR이 머지되었습니다."
             echo "ops-gate status: $OPS_STATUS"
             exit 1
           fi
-
-  deploy-backend:
-    name: Deploy Backend
-    needs: verify-ops-gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-
-      - name: Deploy Backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service mud-backend
-
-  deploy-frontend:
-    name: Deploy Frontend
-    needs: deploy-backend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-
-      - name: Deploy Frontend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service mud-frontend
