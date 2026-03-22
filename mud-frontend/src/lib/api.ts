@@ -1,6 +1,6 @@
 import type { Category, PageResponse, TrendFilter, TrendItem, TrendStats } from './types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 async function apiFetch<T>(
   path: string,
