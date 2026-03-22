@@ -91,16 +91,16 @@ public class TrendItem {
     private String arxivId;
 
     @Column(name = "scoring_relevance")
-    private Integer scoringRelevance;
+    private Short scoringRelevance;
 
     @Column(name = "scoring_timeliness")
-    private Integer scoringTimeliness;
+    private Short scoringTimeliness;
 
     @Column(name = "scoring_actionability")
-    private Integer scoringActionability;
+    private Short scoringActionability;
 
     @Column(name = "scoring_impact")
-    private Integer scoringImpact;
+    private Short scoringImpact;
 
     @Column(name = "topic_tag", length = 100)
     private String topicTag;
