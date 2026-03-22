@@ -80,11 +80,13 @@ jobs:
         if: always()
         working-directory: mud-backend
         run: |
-          if [ -f build/reports/jacoco/test/jacocoTestReport.csv ]; then
-            awk -F, '{ instructions += $4+$5; covered += $5 } END { printf "📊 Code Coverage: %.1f%%\n", 100*covered/instructions }' \
-              build/reports/jacoco/test/jacocoTestReport.csv
+          CSV=$(find build/reports/jacoco -name "*.csv" -type f 2>/dev/null | head -1)
+          if [ -n "$CSV" ]; then
+            echo "📄 Report: $CSV"
+            awk -F, '{ instructions += $4+$5; covered += $5 } END { printf "📊 Code Coverage: %.1f%%\n", 100*covered/instructions }' "$CSV"
           else
-            echo "⚠️ Jacoco report not found"
+            echo "⚠️ Jacoco CSV report not found"
+            find build/reports/jacoco -type f 2>/dev/null || echo "No jacoco reports directory"
           fi
 
   frontend:
