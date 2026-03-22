@@ -27,7 +27,7 @@ const SOURCE_LINKS = [
 
 export function Sidebar({ categories }: Props) {
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" aria-label="사이드바 네비게이션">
       <div className="header">
         <div className="header-logo">
           <Image src="/favicon.svg" alt="Mud" width={24} height={24} style={{ verticalAlign: 'middle', marginRight: '6px', borderRadius: '4px' }} />
@@ -36,42 +36,42 @@ export function Sidebar({ categories }: Props) {
         <div className="header-tagline">기술 트렌드 큐레이션</div>
       </div>
 
-      <nav>
-        <ul className="category-list">
+      <nav aria-label="메인 네비게이션">
+        <ul className="category-list" role="list">
           <li className="category-item" style={{ marginBottom: '4px' }}>
-            <Link href="/trends">
-              <span>📊</span> 전체 보기
+            <Link href="/trends" aria-label="전체 트렌드 보기">
+              <span aria-hidden="true">📊</span> 전체 보기
             </Link>
           </li>
           <li className="category-item">
-            <Link href="/bookmarks">
-              <span>📌</span> 저장한 글
+            <Link href="/bookmarks" aria-label="저장한 글 보기">
+              <span aria-hidden="true">📌</span> 저장한 글
             </Link>
           </li>
         </ul>
 
-        <div style={{ padding: '12px 20px 6px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div id="category-heading" style={{ padding: '12px 20px 6px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           카테고리
         </div>
-        <ul className="category-list">
+        <ul className="category-list" role="list" aria-labelledby="category-heading">
           {categories.map((cat) => (
             <li key={cat.slug} className="category-item">
               <Link href={`/trends?category=${cat.slug}`}>
-                <span>{cat.emoji}</span>
+                <span aria-hidden="true">{cat.emoji}</span>
                 {cat.displayName}
               </Link>
             </li>
           ))}
         </ul>
 
-        <div style={{ padding: '12px 20px 6px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div id="source-heading" style={{ padding: '12px 20px 6px', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           소스
         </div>
-        <ul className="category-list">
+        <ul className="category-list" role="list" aria-labelledby="source-heading">
           {SOURCE_LINKS.map((src) => (
             <li key={src.href} className="category-item">
               <Link href={src.href}>
-                <span>{src.emoji}</span>
+                <span aria-hidden="true">{src.emoji}</span>
                 {src.label}
               </Link>
             </li>
