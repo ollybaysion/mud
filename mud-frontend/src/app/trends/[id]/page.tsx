@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { DeepAnalysisSection } from '@/components/ui/DeepAnalysisSection';
 import { sanitizeUrl, stripHtml } from '@/lib/url';
+import { ReadMarker } from '@/components/ui/ReadMarker';
 import { SOURCE_CONFIG, SCORE_COLORS, SCORE_LABELS } from '@/constants/sources';
 
 interface Props {
@@ -23,6 +24,7 @@ export default async function TrendDetailPage({ params }: Props) {
 
   return (
     <article style={{ maxWidth: '800px' }}>
+      <ReadMarker itemId={item.id} />
       <Link href="/trends" style={{ fontSize: '13px', color: 'var(--color-accent)', display: 'block', marginBottom: '20px' }}>
         ← 목록으로
       </Link>
