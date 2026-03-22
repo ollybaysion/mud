@@ -386,7 +386,7 @@ public class AnalysisService {
             TransactionTemplate txRead = new TransactionTemplate(transactionManager);
             txRead.setReadOnly(true);
             List<Long> doneItemIds = txRead.execute(status ->
-                trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
+                trendItemRepository.findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
                     .stream().map(TrendItem::getId).toList()
             );
 
