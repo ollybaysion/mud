@@ -142,6 +142,41 @@ class AnalysisServiceScoringTest {
         assertThat(results).hasSize(1);
     }
 
+    @Test
+    @DisplayName("scoring 값 클램핑 — 범위 초과 시 max로 제한")
+    void parseScoringClamping() {
+        String json = """
+            [{
+                "koreanSummary": "요약",
+                "categorySlug": "general",
+                "keywords": [],
+                "scoring": {"relevance": 10, "actionability": -1, "impact": 5},
+                "topicTag": "test"
+            }]
+            """;
+
+        List<?> results = ReflectionTestUtils.invokeMethod(service, "parseBatchResult", json, 1);
+        assertThat(results).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("빈 JSON 배열 → 빈 리스트")
+    void parseEmptyArray() {
+        List<?> results = ReflectionTestUtils.invokeMethod(service, "parseBatchResult", "[]", 0);
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @DisplayName("topicTag 없으면 null")
+    void parseNoTopicTag() {
+        String json = """
+            [{"koreanSummary": "요약", "categorySlug": "general", "keywords": [], "scoring": {"relevance": 1, "actionability": 1, "impact": 0}}]
+            """;
+
+        List<?> results = ReflectionTestUtils.invokeMethod(service, "parseBatchResult", json, 1);
+        assertThat(results).hasSize(1);
+    }
+
     // --- Rescore status ---
 
     @Test
@@ -151,6 +186,24 @@ class AnalysisServiceScoringTest {
         assertThat(status.get("inProgress")).isEqualTo(false);
         assertThat(status.get("processed")).isEqualTo(0);
         assertThat(status.get("failed")).isEqualTo(0);
+        assertThat(status.get("total")).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("rescore 중복 실행 방지 — 이미 진행 중이면 스킵")
+    void rescoreDuplicatePrevention() {
+        // 첫 번째 호출용 락 + 빈 결과
+        when(redisLockRegistry.obtain("analysis:rescore")).thenReturn(new ReentrantLock());
+        when(transactionManager.getTransaction(any()))
+            .thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
+        when(trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(any()))
+            .thenReturn(List.of());
+
+        // 첫 번째 호출 — 성공 (빈 리스트라 즉시 완료)
+        service.rescoreExistingItems();
+
+        // 상태 확인
+        Map<String, Object> status = service.getRescoreStatus();
         assertThat(status.get("total")).isEqualTo(0);
     }
 
