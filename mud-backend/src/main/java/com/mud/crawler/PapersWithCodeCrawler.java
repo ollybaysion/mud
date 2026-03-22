@@ -61,9 +61,7 @@ public class PapersWithCodeCrawler extends CrawlerBase {
 
                 String title = paper.path("title").asText();
                 String abstract_ = paper.path("abstract").asText("");
-                String description = abstract_.length() > 400
-                    ? abstract_.substring(0, 397) + "..."
-                    : abstract_;
+                String description = cleanDescription(abstract_);
 
                 // GitHub 구현 코드 수 - 높을수록 주목받는 논문
                 int githubRepos = paper.path("repository_count").asInt(0);
