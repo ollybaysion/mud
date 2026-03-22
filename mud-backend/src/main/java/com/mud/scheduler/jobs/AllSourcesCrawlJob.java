@@ -42,7 +42,6 @@ public class AllSourcesCrawlJob implements Job {
     @Autowired private EETimesCrawler eeTimesCrawler;
     @Autowired private SemiEngineeringCrawler semiEngineeringCrawler;
     @Autowired private ChipsAndCheeseCrawler chipsAndCheeseCrawler;
-    @Autowired private VideoCardzCrawler videoCardzCrawler;
     @Autowired private CNXSoftwareCrawler cnxSoftwareCrawler;
     @Autowired private AnalysisService analysisService;
 
@@ -76,7 +75,6 @@ public class AllSourcesCrawlJob implements Job {
             try { all.addAll(eeTimesCrawler.crawl()); }          catch (Exception e) { log.error("EE Times 크롤 실패", e); }
             try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
             try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
-            try { all.addAll(videoCardzCrawler.crawl()); }       catch (Exception e) { log.error("VideoCardz 크롤 실패", e); }
             try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
 
             analysisService.analyzePendingItems();

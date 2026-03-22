@@ -45,7 +45,6 @@ public class StartupCrawlRunner {
     private final EETimesCrawler eeTimesCrawler;
     private final SemiEngineeringCrawler semiEngineeringCrawler;
     private final ChipsAndCheeseCrawler chipsAndCheeseCrawler;
-    private final VideoCardzCrawler videoCardzCrawler;
     private final CNXSoftwareCrawler cnxSoftwareCrawler;
     private final AnalysisService analysisService;
 
@@ -92,7 +91,6 @@ public class StartupCrawlRunner {
         try { all.addAll(eeTimesCrawler.crawl()); }          catch (Exception e) { log.error("EE Times 크롤 실패", e); }
         try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
         try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
-        try { all.addAll(videoCardzCrawler.crawl()); }       catch (Exception e) { log.error("VideoCardz 크롤 실패", e); }
         try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
