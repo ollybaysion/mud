@@ -16,11 +16,14 @@ async function apiFetch<T>(
     });
   }
 
+  console.log(`[api] ${path} → ${url.toString()}`);
+
   const res = await fetch(url.toString(), {
     next: { revalidate },
   });
 
   if (!res.ok) {
+    console.error(`[api] ${path} failed: ${res.status} ${res.statusText}`);
     throw new Error(`API error ${res.status}: ${path}`);
   }
 
