@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import type { TrendItem } from '@/lib/types';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { relativeTime } from '@/lib/time';
+import { useReadHistory } from '@/lib/useReadHistory';
 import { SOURCE_CONFIG, SCORE_COLORS } from '@/constants/sources';
 
 interface Props {
@@ -9,6 +12,7 @@ interface Props {
 }
 
 export function TrendCard({ item }: Props) {
+  const { isRead } = useReadHistory();
   const sourceConf = SOURCE_CONFIG[item.source] ?? SOURCE_CONFIG.GITHUB;
   const scoreColor = item.relevanceScore
     ? SCORE_COLORS[item.relevanceScore]
@@ -19,7 +23,7 @@ export function TrendCard({ item }: Props) {
 
   return (
     <article
-      className="trend-card"
+      className={`trend-card ${isRead(item.id) ? 'trend-card-read' : ''}`}
       style={{ '--card-accent': sourceConf.color } as React.CSSProperties}
     >
       <div className="trend-card-header">

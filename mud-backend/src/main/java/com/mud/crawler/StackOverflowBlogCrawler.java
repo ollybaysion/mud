@@ -44,7 +44,6 @@ public class StackOverflowBlogCrawler extends CrawlerBase {
                 if (title.isEmpty()) continue;
 
                 String description = item.select("description").text().trim();
-                if (description.length() > 400) description = description.substring(0, 397) + "...";
 
                 String pubDateStr = item.select("pubDate").text().trim();
                 LocalDateTime publishedAt = LocalDateTime.now();

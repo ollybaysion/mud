@@ -55,10 +55,7 @@ public class ArXivCrawler extends CrawlerBase {
                     );
                 } catch (Exception ignored) {}
 
-                // Truncate description to 500 chars
-                String description = summary.length() > 500
-                    ? summary.substring(0, 497) + "..."
-                    : summary;
+                String description = cleanDescription(summary);
 
                 TrendItem item = TrendItem.builder()
                     .title(title)
