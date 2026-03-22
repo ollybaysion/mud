@@ -44,6 +44,11 @@ export function Sidebar({ categories }: Props) {
             </Link>
           </li>
           <li className="category-item">
+            <Link href="/digest" aria-label="주간 다이제스트">
+              <span aria-hidden="true">📰</span> 주간 다이제스트
+            </Link>
+          </li>
+          <li className="category-item">
             <Link href="/bookmarks" aria-label="저장한 글 보기">
               <span aria-hidden="true">📌</span> 저장한 글
             </Link>

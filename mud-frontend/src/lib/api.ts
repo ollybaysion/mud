@@ -1,4 +1,4 @@
-import type { Category, PageResponse, TrendFilter, TrendItem, TrendStats } from './types';
+import type { Category, PageResponse, TrendFilter, TrendItem, TrendStats, WeeklyReport } from './types';
 
 const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
@@ -46,5 +46,8 @@ export const api = {
 
   getStats: () =>
     apiFetch<TrendStats>('/api/stats', undefined, 300),
+
+  getWeeklyReport: (week?: string) =>
+    apiFetch<WeeklyReport>('/api/reports/weekly', week ? { week } : undefined, 3600),
 
 };
