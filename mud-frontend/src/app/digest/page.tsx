@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default async function DigestPage() {
-  const report = await api.getWeeklyReport().catch(() => null);
+  const report = await api.getWeeklyReport().catch((e) => {
+    console.error('[digest] getWeeklyReport failed:', e);
+    return null;
+  });
 
   if (!report) {
     return (
