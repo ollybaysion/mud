@@ -92,29 +92,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ steps.pr.outputs.no_linked_issue }}" = "true" ]; then
-            APPROVED=$(gh pr view ${{ steps.pr.outputs.pr_number }} \
-              --repo ${{ github.repository }} \
-              --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
-            if [ "$APPROVED" -gt 0 ]; then
-              echo "approved=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "approved=false" >> "$GITHUB_OUTPUT"
-            fi
+          PR_NUM=${{ steps.pr.outputs.pr_number }}
+
+          # PR comments에서 확인
+          COMMENT_MATCH=$(gh pr view $PR_NUM \
+            --repo ${{ github.repository }} \
+            --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+
+          # PR reviews에서도 확인 (gh pr review --approve 사용 시)
+          REVIEW_MATCH=$(gh pr view $PR_NUM \
+            --repo ${{ github.repository }} \
+            --json reviews -q '.reviews[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+
+          if [ "$COMMENT_MATCH" -gt 0 ] || [ "$REVIEW_MATCH" -gt 0 ]; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          APPROVED=false
-          for ISSUE_NUM in ${{ steps.pr.outputs.issue_numbers }}; do
-            COMMENT_COUNT=$(gh issue view "$ISSUE_NUM" \
-              --repo ${{ github.repository }} \
-              --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
-            if [ "$COMMENT_COUNT" -gt 0 ]; then
-              APPROVED=true
-              break
-            fi
-          done
-          echo "approved=$APPROVED" >> "$GITHUB_OUTPUT"
+          # 연결된 이슈에서도 확인
+          if [ "${{ steps.pr.outputs.no_linked_issue }}" != "true" ]; then
+            for ISSUE_NUM in ${{ steps.pr.outputs.issue_numbers }}; do
+              ISSUE_MATCH=$(gh issue view "$ISSUE_NUM" \
+                --repo ${{ github.repository }} \
+                --json comments -q '.comments[].body' | grep -c '✅ \[코드 리뷰\]' || true)
+              if [ "$ISSUE_MATCH" -gt 0 ]; then
+                echo "approved=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+          fi
+
+          echo "approved=false" >> "$GITHUB_OUTPUT"
 
       - name: Report results
         env:

@@ -80,11 +80,19 @@ jobs:
         if: always()
         working-directory: mud-backend
         run: |
-          if [ -f build/reports/jacoco/test/jacocoTestReport.csv ]; then
-            awk -F, '{ instructions += $4+$5; covered += $5 } END { printf "📊 Code Coverage: %.1f%%\n", 100*covered/instructions }' \
-              build/reports/jacoco/test/jacocoTestReport.csv
+          XML="build/reports/jacoco/test/jacocoTestReport.xml"
+          if [ -f "$XML" ]; then
+            MISSED=$(grep -oP 'type="INSTRUCTION" missed="\K[0-9]+' "$XML" | tail -1)
+            COVERED=$(grep -oP 'type="INSTRUCTION"[^/]*covered="\K[0-9]+' "$XML" | tail -1)
+            if [ -n "$MISSED" ] && [ -n "$COVERED" ]; then
+              TOTAL=$((MISSED + COVERED))
+              PCT=$(awk "BEGIN { printf \"%.1f\", 100*$COVERED/$TOTAL }")
+              echo "📊 Code Coverage: ${PCT}% ($COVERED/$TOTAL instructions)"
+            else
+              echo "⚠️ Could not parse coverage from XML"
+            fi
           else
-            echo "⚠️ Jacoco report not found"
+            echo "⚠️ Jacoco XML report not found"
           fi
 
   frontend:
