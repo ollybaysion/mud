@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -41,5 +42,17 @@ public class AdminController {
         log.info("수동 분석 트리거");
         analysisService.analyzePendingItems();
         return ResponseEntity.ok(Map.of("status", "분석 시작됨 - 백그라운드에서 실행 중"));
+    }
+
+    @PostMapping("/rescore")
+    public ResponseEntity<Map<String, String>> triggerRescore() {
+        log.info("재평가 배치 트리거");
+        analysisService.rescoreExistingItems();
+        return ResponseEntity.ok(Map.of("status", "재평가 시작됨 - 백그라운드에서 실행 중"));
+    }
+
+    @GetMapping("/rescore/status")
+    public ResponseEntity<Map<String, Object>> rescoreStatus() {
+        return ResponseEntity.ok(analysisService.getRescoreStatus());
     }
 }

@@ -63,6 +63,9 @@ analysis:
   concurrency: ${ANALYSIS_CONCURRENCY:10}
   batch-size: ${ANALYSIS_BATCH_SIZE:5}
 
+scoring:
+  phase: ${SCORING_PHASE:2}
+
 claude:
   api:
     key: ${CLAUDE_API_KEY}

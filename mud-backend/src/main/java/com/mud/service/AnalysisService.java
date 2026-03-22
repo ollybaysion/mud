@@ -61,6 +61,9 @@ public class AnalysisService {
     @Value("${analysis.batch-size:5}")
     private int batchSize;
 
+    @Value("${scoring.phase:2}")
+    private int scoringPhase;
+
     @Value("${claude.api.deep-analysis-model:claude-sonnet-4-6}")
     private String deepAnalysisModel;
 
@@ -79,6 +82,11 @@ public class AnalysisService {
 
     @Async
     public void analyzePendingItems() {
+        if (scoringPhase == 1) {
+            log.info("Scoring Phase 1: 신규 분석 스킵 (재평가 모드)");
+            return;
+        }
+
         Lock lock = redisLockRegistry.obtain("analysis:pending");
 
         if (!lock.tryLock()) {
@@ -138,10 +146,15 @@ public class AnalysisService {
                         TrendItem item = managedMap.get(batch.get(i).getId());
                         if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
-                            : new AnalysisResult("분석 실패", "general", 3, List.of());
+                            : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
                         item.setKoreanSummary(result.koreanSummary());
                         item.setRelevanceScore(result.relevanceScore());
                         item.setKeywords(result.keywords());
+                        item.setScoringRelevance(result.scoringRelevance());
+                        item.setScoringTimeliness(result.scoringTimeliness());
+                        item.setScoringActionability(result.scoringActionability());
+                        item.setScoringImpact(result.scoringImpact());
+                        item.setTopicTag(result.topicTag());
                         categoryRepository.findBySlug(result.categorySlug())
                             .ifPresent(item::setCategory);
                         item.setAnalyzedAt(LocalDateTime.now());
@@ -216,17 +229,40 @@ public class AnalysisService {
               {
                 "koreanSummary": "현업 개발자 관점에서 2-3문장으로 핵심을 요약 (한국어로 작성)",
                 "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 hardware 또는 general 중 하나",
-                "relevanceScore": 1부터 5 사이의 정수,
-                "keywords": ["키워드1", "키워드2", "키워드3"]
+                "keywords": ["키워드1", "키워드2", "키워드3"],
+                "scoring": {
+                  "relevance": 0부터 3 사이의 정수,
+                  "timeliness": 0부터 2 사이의 정수,
+                  "actionability": 0부터 3 사이의 정수,
+                  "impact": 0부터 2 사이의 정수
+                },
+                "topicTag": "주제를 대표하는 영문 소문자 태그 (예: kubernetes, react, rust, llm)"
               }
             ]
 
-            relevanceScore 기준:
-            5 = 즉시 실무에 적용 가능한 핵심 기술
-            4 = 알아두면 유용한 중요 트렌드
-            3 = 관심 분야라면 볼만한 내용
-            2 = 참고 수준의 정보
-            1 = 현업 개발자 관련성 낮음
+            scoring 채점 기준:
+
+            기술 관련성 (relevance, 0~3):
+            3 = 코드, 아키텍처, 도구, 프레임워크를 직접 다룸 (예: React 19 릴리즈, Kubernetes CVE)
+            2 = 기술 업계 동향, 개발 문화, 기술 의사결정 관련
+            1 = 기술과 간접 관련 (예: 테크 기업 인사, 투자 뉴스)
+            0 = 기술과 무관
+
+            시의성 (timeliness, 0~2):
+            2 = 지금 즉시 알아야 함 (보안 취약점, 브레이킹 체인지)
+            1 = 최근 트렌드/릴리즈이지만 긴급하지 않음
+            0 = 시간 무관한 일반 콘텐츠
+
+            실용성 (actionability, 0~3):
+            3 = 바로 적용 가능한 튜토리얼, 도구, 코드
+            2 = 실무 의사결정에 참고 가능
+            1 = 배경 지식 수준
+            0 = 실무 적용 불가
+
+            민감도/임팩트 (impact, 0~2):
+            2 = 대다수 개발자에게 영향
+            1 = 특정 기술 스택 사용자에게 영향
+            0 = 니치하거나 영향 범위 극소
             """.formatted(batch.size(), items);
     }
 
@@ -258,13 +294,30 @@ public class AnalysisService {
             for (JsonNode node : arrayNode) {
                 String koreanSummary = node.path("koreanSummary").asText("요약 없음");
                 String categorySlug = node.path("categorySlug").asText("general");
-                int relevanceScore = Math.max(1, Math.min(5, node.path("relevanceScore").asInt(3)));
                 List<String> keywords = new ArrayList<>();
                 JsonNode kwNode = node.path("keywords");
                 if (kwNode.isArray()) {
                     kwNode.forEach(kw -> keywords.add(kw.asText()));
                 }
-                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords));
+
+                JsonNode scoring = node.path("scoring");
+                int sRelevance = Math.max(0, Math.min(3, scoring.path("relevance").asInt(1)));
+                int sTimeliness = Math.max(0, Math.min(2, scoring.path("timeliness").asInt(0)));
+                int sActionability = Math.max(0, Math.min(3, scoring.path("actionability").asInt(1)));
+                int sImpact = Math.max(0, Math.min(2, scoring.path("impact").asInt(0)));
+
+                int totalScore = sRelevance + sTimeliness + sActionability + sImpact;
+                int relevanceScore;
+                if (totalScore <= 1) relevanceScore = 1;
+                else if (totalScore <= 3) relevanceScore = 2;
+                else if (totalScore <= 5) relevanceScore = 3;
+                else if (totalScore <= 7) relevanceScore = 4;
+                else relevanceScore = 5;
+
+                String topicTag = node.path("topicTag").asText(null);
+
+                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords,
+                    sRelevance, sTimeliness, sActionability, sImpact, topicTag));
             }
             return results;
         } catch (Exception e) {
@@ -285,8 +338,114 @@ public class AnalysisService {
         String koreanSummary,
         String categorySlug,
         int relevanceScore,
-        List<String> keywords
+        List<String> keywords,
+        int scoringRelevance,
+        int scoringTimeliness,
+        int scoringActionability,
+        int scoringImpact,
+        String topicTag
     ) {}
+
+    // --- Rescore ---
+
+    private final java.util.concurrent.atomic.AtomicInteger rescoreProcessed = new java.util.concurrent.atomic.AtomicInteger(0);
+    private volatile int rescoreTotal = 0;
+    private volatile boolean rescoreInProgress = false;
+
+    @Async
+    public void rescoreExistingItems() {
+        if (rescoreInProgress) {
+            log.info("재평가가 이미 진행 중입니다");
+            return;
+        }
+        rescoreInProgress = true;
+        rescoreProcessed.set(0);
+
+        try {
+            TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+            txRead.setReadOnly(true);
+            List<Long> doneItemIds = txRead.execute(status ->
+                trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
+                    .stream().map(TrendItem::getId).toList()
+            );
+
+            rescoreTotal = doneItemIds.size();
+            log.info("재평가 시작: {}개 아이템", rescoreTotal);
+
+            List<List<Long>> batches = new ArrayList<>();
+            for (int i = 0; i < doneItemIds.size(); i += batchSize) {
+                batches.add(doneItemIds.subList(i, Math.min(i + batchSize, doneItemIds.size())));
+            }
+
+            for (List<Long> batchIds : batches) {
+                try {
+                    semaphore.acquire();
+                    try {
+                        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+                        List<TrendItem> items = tx.execute(status -> {
+                            List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
+                            managed.forEach(item -> item.getKeywords().size());
+                            return managed;
+                        });
+
+                        List<AnalysisResult> results = callClaudeApiBatch(items);
+
+                        tx.executeWithoutResult(status -> {
+                            Map<Long, TrendItem> managedMap = trendItemRepository.findAllById(batchIds)
+                                .stream().collect(Collectors.toMap(TrendItem::getId, Function.identity()));
+                            for (int i = 0; i < items.size(); i++) {
+                                TrendItem item = managedMap.get(items.get(i).getId());
+                                if (item == null) continue;
+                                AnalysisResult result = (i < results.size()) ? results.get(i)
+                                    : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
+                                item.setKoreanSummary(result.koreanSummary());
+                                item.setRelevanceScore(result.relevanceScore());
+                                item.setKeywords(result.keywords());
+                                item.setScoringRelevance(result.scoringRelevance());
+                                item.setScoringTimeliness(result.scoringTimeliness());
+                                item.setScoringActionability(result.scoringActionability());
+                                item.setScoringImpact(result.scoringImpact());
+                                item.setTopicTag(result.topicTag());
+                                categoryRepository.findBySlug(result.categorySlug())
+                                    .ifPresent(item::setCategory);
+                                item.setAnalyzedAt(LocalDateTime.now());
+                                if (result.relevanceScore() <= 1) {
+                                    item.setAnalysisStatus(TrendItem.AnalysisStatus.REJECTED);
+                                }
+                            }
+                            trendItemRepository.saveAll(managedMap.values());
+                        });
+
+                        rescoreProcessed.addAndGet(batchIds.size());
+                        log.debug("재평가 진행: {}/{}", rescoreProcessed.get(), rescoreTotal);
+                    } finally {
+                        semaphore.release();
+                    }
+
+                    Thread.sleep(600);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                } catch (Exception e) {
+                    log.error("재평가 배치 실패: {}", e.getMessage());
+                    rescoreProcessed.addAndGet(batchIds.size());
+                }
+            }
+
+            trendService.evictTrendCaches();
+            log.info("재평가 완료: {}/{}", rescoreProcessed.get(), rescoreTotal);
+        } finally {
+            rescoreInProgress = false;
+        }
+    }
+
+    public Map<String, Object> getRescoreStatus() {
+        return Map.of(
+            "inProgress", rescoreInProgress,
+            "processed", rescoreProcessed.get(),
+            "total", rescoreTotal
+        );
+    }
 
     public String generateDeepAnalysis(Long trendItemId) {
         TransactionTemplate txRead = new TransactionTemplate(transactionManager);

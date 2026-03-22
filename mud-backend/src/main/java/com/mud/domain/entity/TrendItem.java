@@ -90,8 +90,23 @@ public class TrendItem {
     @Column(length = 50)
     private String arxivId;
 
+    @Column(name = "scoring_relevance")
+    private Integer scoringRelevance;
+
+    @Column(name = "scoring_timeliness")
+    private Integer scoringTimeliness;
+
+    @Column(name = "scoring_actionability")
+    private Integer scoringActionability;
+
+    @Column(name = "scoring_impact")
+    private Integer scoringImpact;
+
+    @Column(name = "topic_tag", length = 100)
+    private String topicTag;
+
     public enum AnalysisStatus {
-        PENDING, PROCESSING, DONE, FAILED
+        PENDING, PROCESSING, DONE, FAILED, REJECTED
     }
 
     public enum CrawlSource {
