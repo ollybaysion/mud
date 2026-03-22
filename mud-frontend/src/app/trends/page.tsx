@@ -1,6 +1,18 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+
+export const metadata: Metadata = {
+  title: '기술 트렌드 | Mud',
+  description: '18개 소스에서 수집한 최신 기술 트렌드를 AI가 분석하여 제공합니다.',
+  openGraph: {
+    title: 'Mud - 기술 트렌드 큐레이션',
+    description: '현업 개발자를 위한 최신 기술 트렌드 큐레이션 플랫폼',
+    type: 'website',
+    siteName: 'Mud',
+  },
+};
 import { TrendGrid } from '@/components/trend/TrendGrid';
 import { Pagination } from '@/components/ui/Pagination';
 import { FilterBar } from '@/components/layout/FilterBar';
