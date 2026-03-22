@@ -24,6 +24,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -130,9 +132,11 @@ public class AnalysisService {
                 List<AnalysisResult> results = callClaudeApiBatch(batch);
 
                 tx.executeWithoutResult(status -> {
-                    List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
-                    for (int i = 0; i < managed.size(); i++) {
-                        TrendItem item = managed.get(i);
+                    Map<Long, TrendItem> managedMap = trendItemRepository.findAllById(batchIds)
+                        .stream().collect(Collectors.toMap(TrendItem::getId, Function.identity()));
+                    for (int i = 0; i < batch.size(); i++) {
+                        TrendItem item = managedMap.get(batch.get(i).getId());
+                        if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
                             : new AnalysisResult("분석 실패", "general", 3, List.of());
                         item.setKoreanSummary(result.koreanSummary());
@@ -143,7 +147,7 @@ public class AnalysisService {
                         item.setAnalyzedAt(LocalDateTime.now());
                         item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
                     }
-                    trendItemRepository.saveAll(managed);
+                    trendItemRepository.saveAll(managedMap.values());
                 });
 
                 int count = analyzedBatches.incrementAndGet();
