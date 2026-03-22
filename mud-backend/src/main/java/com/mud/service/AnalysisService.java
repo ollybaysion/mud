@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -310,6 +312,46 @@ public class AnalysisService {
         });
 
         return future.join();
+    }
+
+    public void generateDeepAnalysisStream(Long trendItemId, SseEmitter emitter) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"started\",\"percent\":0}"));
+
+                TransactionTemplate txRead = new TransactionTemplate(transactionManager);
+                txRead.setReadOnly(true);
+                TrendItem item = txRead.execute(status -> {
+                    TrendItem i = trendItemRepository.findById(trendItemId)
+                        .orElseThrow(() -> new IllegalArgumentException("Trend item not found: " + trendItemId));
+                    i.getKeywords().size();
+                    return i;
+                });
+
+                if (item.getDeepAnalysis() != null) {
+                    emitter.send(SseEmitter.event().name("result").data(item.getDeepAnalysis()));
+                    emitter.complete();
+                    return;
+                }
+
+                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"analyzing\",\"percent\":30}"));
+
+                String analysis = executeDeepAnalysis(item);
+
+                emitter.send(SseEmitter.event().name("progress").data("{\"stage\":\"done\",\"percent\":100}"));
+                emitter.send(SseEmitter.event().name("result").data(analysis));
+                emitter.complete();
+            } catch (Exception e) {
+                log.error("Deep analysis stream failed for item {}: {}", trendItemId, e.getMessage());
+                try {
+                    emitter.send(SseEmitter.event().name("error")
+                        .data("{\"code\":\"ANALYSIS_FAILED\",\"message\":\"" + e.getMessage().replace("\"", "'") + "\"}"));
+                    emitter.complete();
+                } catch (Exception ex) {
+                    emitter.completeWithError(ex);
+                }
+            }
+        }, executor);
     }
 
     private String executeDeepAnalysis(TrendItem item) {
