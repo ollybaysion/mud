@@ -17,6 +17,9 @@ export const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji
   MARTIN_FOWLER: { label: 'Martin Fowler', color: '#5b2d8e', emoji: '🏗️' },
   JETBRAINS: { label: 'JetBrains', color: '#000000', emoji: '🧠' },
   GEEKNEWS: { label: 'GeekNews', color: '#00c4b3', emoji: '🇰🇷' },
+  NVIDIA_BLOG: { label: 'NVIDIA Blog', color: '#76b900', emoji: '🟢' },
+  SERVE_THE_HOME: { label: 'ServeTheHome', color: '#0071c5', emoji: '🖥️' },
+  TOMS_HARDWARE: { label: "Tom's Hardware", color: '#e00034', emoji: '🔧' },
 };
 
 export const SCORE_COLORS = ['', '#64748b', '#f59e0b', '#3b82f6', '#10b981', '#a855f7'];

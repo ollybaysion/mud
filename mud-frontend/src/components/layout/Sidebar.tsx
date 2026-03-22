@@ -11,6 +11,9 @@ const SOURCE_LINKS = [
   { href: '/trends?source=DEV_TO', label: 'dev.to', emoji: '💻' },
   { href: '/trends?source=ARXIV', label: 'ArXiv', emoji: '📄' },
   { href: '/trends?source=REDDIT', label: 'Reddit', emoji: '🔴' },
+  { href: '/trends?source=NVIDIA_BLOG', label: 'NVIDIA Blog', emoji: '🟢' },
+  { href: '/trends?source=SERVE_THE_HOME', label: 'ServeTheHome', emoji: '🖥️' },
+  { href: '/trends?source=TOMS_HARDWARE', label: "Tom's Hardware", emoji: '🔧' },
 ];
 
 export function Sidebar({ categories }: Props) {
