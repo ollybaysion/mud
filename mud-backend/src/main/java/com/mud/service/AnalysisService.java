@@ -116,33 +116,34 @@ public class AnalysisService {
 
     private void analyzeBatch(List<TrendItem> batch, AtomicInteger analyzedBatches, int totalBatches) {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
+        List<Long> batchIds = batch.stream().map(TrendItem::getId).toList();
         try {
             semaphore.acquire();
             try {
+
                 tx.executeWithoutResult(status -> {
-                    for (TrendItem item : batch) {
-                        TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
-                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING);
-                        trendItemRepository.save(managed);
-                    }
+                    List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
+                    managed.forEach(item -> item.setAnalysisStatus(TrendItem.AnalysisStatus.PROCESSING));
+                    trendItemRepository.saveAll(managed);
                 });
 
                 List<AnalysisResult> results = callClaudeApiBatch(batch);
 
                 tx.executeWithoutResult(status -> {
-                    for (int i = 0; i < batch.size(); i++) {
-                        TrendItem managed = trendItemRepository.findById(batch.get(i).getId()).orElseThrow();
+                    List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
+                    for (int i = 0; i < managed.size(); i++) {
+                        TrendItem item = managed.get(i);
                         AnalysisResult result = (i < results.size()) ? results.get(i)
                             : new AnalysisResult("분석 실패", "general", 3, List.of());
-                        managed.setKoreanSummary(result.koreanSummary());
-                        managed.setRelevanceScore(result.relevanceScore());
-                        managed.setKeywords(result.keywords());
+                        item.setKoreanSummary(result.koreanSummary());
+                        item.setRelevanceScore(result.relevanceScore());
+                        item.setKeywords(result.keywords());
                         categoryRepository.findBySlug(result.categorySlug())
-                            .ifPresent(managed::setCategory);
-                        managed.setAnalyzedAt(LocalDateTime.now());
-                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
-                        trendItemRepository.save(managed);
+                            .ifPresent(item::setCategory);
+                        item.setAnalyzedAt(LocalDateTime.now());
+                        item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
                     }
+                    trendItemRepository.saveAll(managed);
                 });
 
                 int count = analyzedBatches.incrementAndGet();
@@ -156,11 +157,9 @@ public class AnalysisService {
             log.error("Batch analysis failed: {}", e.getMessage());
             try {
                 tx.executeWithoutResult(status -> {
-                    for (TrendItem item : batch) {
-                        TrendItem managed = trendItemRepository.findById(item.getId()).orElseThrow();
-                        managed.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED);
-                        trendItemRepository.save(managed);
-                    }
+                    List<TrendItem> managed = trendItemRepository.findAllById(batchIds);
+                    managed.forEach(item -> item.setAnalysisStatus(TrendItem.AnalysisStatus.FAILED));
+                    trendItemRepository.saveAll(managed);
                 });
             } catch (Exception ex) {
                 log.error("Failed to mark batch as FAILED: {}", ex.getMessage());
