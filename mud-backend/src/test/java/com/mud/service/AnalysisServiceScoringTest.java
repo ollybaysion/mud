@@ -196,7 +196,7 @@ class AnalysisServiceScoringTest {
         when(redisLockRegistry.obtain("analysis:rescore")).thenReturn(new ReentrantLock());
         when(transactionManager.getTransaction(any()))
             .thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
-        when(trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(any()))
+        when(trendItemRepository.findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(any()))
             .thenReturn(List.of());
 
         // 첫 번째 호출 — 성공 (빈 리스트라 즉시 완료)
