@@ -62,7 +62,7 @@ public class WeeklyReportService {
         TransactionTemplate txRead = new TransactionTemplate(transactionManager);
         txRead.setReadOnly(true);
         List<TrendItem> periodItems = txRead.execute(status ->
-            trendItemRepository.findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
+            trendItemRepository.findByStatusAndPeriodWithCategory(
                 TrendItem.AnalysisStatus.DONE, startDt, endDt));
         int totalCount = periodItems.size();
 
