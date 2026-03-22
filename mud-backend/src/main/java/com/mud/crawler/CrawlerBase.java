@@ -77,6 +77,14 @@ public abstract class CrawlerBase {
         Document execute() throws IOException;
     }
 
+    /**
+     * HTML 태그를 제거하고 plain text로 변환. truncate하지 않고 전체 저장.
+     */
+    protected String cleanDescription(String html) {
+        if (html == null || html.isBlank()) return null;
+        return Jsoup.parse(html).text().trim();
+    }
+
     protected String computeUrlHash(String url) {
         return DigestUtils.md5DigestAsHex(url.getBytes());
     }

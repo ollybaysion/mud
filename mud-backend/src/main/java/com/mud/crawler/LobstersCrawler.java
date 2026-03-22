@@ -48,7 +48,6 @@ public class LobstersCrawler extends CrawlerBase {
 
                 String title = item.select("title").text().trim();
                 String description = item.select("description").text().trim();
-                if (description.length() > 400) description = description.substring(0, 397) + "...";
 
                 String pubDateStr = item.select("pubDate").text().trim();
                 LocalDateTime publishedAt = LocalDateTime.now();
