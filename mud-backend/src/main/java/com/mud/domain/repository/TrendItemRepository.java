@@ -57,4 +57,8 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
     List<Object[]> countByCategory();
 
     long countByAnalysisStatus(TrendItem.AnalysisStatus status);
+
+    List<TrendItem> findByAnalysisStatusAndCrawledAtBetweenOrderByRelevanceScoreDescPublishedAtDesc(
+        TrendItem.AnalysisStatus status, java.time.LocalDateTime start, java.time.LocalDateTime end
+    );
 }
