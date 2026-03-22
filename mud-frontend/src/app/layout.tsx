@@ -6,6 +6,10 @@ import { api } from '@/lib/api';
 export const metadata: Metadata = {
   title: 'Mud - 기술 트렌드',
   description: '현업 개발자를 위한 최신 기술 트렌드 큐레이션',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default async function RootLayout({
