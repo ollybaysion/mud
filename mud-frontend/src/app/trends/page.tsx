@@ -45,11 +45,11 @@ export default async function TrendsPage({ searchParams }: Props) {
     <>
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
-          {categoryLabel} 트렌드
+          {categoryLabel === '전체' ? '오늘의 기술 트렌드' : `${categoryLabel} 트렌드`}
         </h1>
         {stats && (
           <p style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
-            총 {stats.totalItems.toLocaleString()}개 항목
+            {stats.totalItems.toLocaleString()}개의 기술 소식을 AI가 분석했습니다
           </p>
         )}
       </div>
