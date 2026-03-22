@@ -447,7 +447,7 @@ public class AnalysisService {
                         });
 
                         rescoreProcessed.addAndGet(batchIds.size());
-                        log.debug("재평가 진행: {}/{}", rescoreProcessed.get(), rescoreTotal);
+                        log.info("재평가 진행: {}/{}", rescoreProcessed.get(), rescoreTotal);
                     } finally {
                         semaphore.release();
                     }
