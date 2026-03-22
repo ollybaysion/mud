@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Markdown from 'react-markdown';
 import type { TrendItem } from '@/lib/types';
 
+const SSE_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+
 const STAGE_LABELS: Record<string, string> = {
   started: '분석 준비 중...',
   analyzing: 'Claude가 분석 중...',
@@ -46,20 +48,20 @@ export function DeepAnalysisSection({ item }: Props) {
   }, [loading]);
 
   useEffect(() => {
-    if (!loading || serverPercent < 30) return;
+    if (!loading) return;
 
     fakeTimerRef.current = setInterval(() => {
       setDisplayPercent((prev) => {
         if (prev >= 90) return 90;
-        const increment = 2 + Math.random() * 3;
+        const increment = 1 + Math.random() * 2;
         return Math.min(prev + increment, 90);
       });
-    }, 2000);
+    }, 1500);
 
     return () => {
       if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
     };
-  }, [loading, serverPercent]);
+  }, [loading]);
 
   useEffect(() => {
     if (serverPercent === 100) {
@@ -78,7 +80,7 @@ export function DeepAnalysisSection({ item }: Props) {
     setStage('');
     setElapsed(0);
 
-    const es = new EventSource(`/api/trends/${item.id}/deep-analysis/stream`);
+    const es = new EventSource(`${SSE_BASE}/api/trends/${item.id}/deep-analysis/stream`);
     eventSourceRef.current = es;
 
     es.addEventListener('progress', (e) => {
