@@ -42,6 +42,7 @@ public class AnalysisService {
     private final ObjectMapper objectMapper;
     private final PlatformTransactionManager transactionManager;
     private final CacheManager cacheManager;
+    private final TrendService trendService;
     private final RedisLockRegistry redisLockRegistry;
 
     @Value("${claude.api.model}")
@@ -105,6 +106,7 @@ public class AnalysisService {
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
             log.info("Analysis complete: {}/{} batches processed", analyzedBatches.get(), batches.size());
+            trendService.evictTrendCaches();
         } finally {
             lock.unlock();
         }
