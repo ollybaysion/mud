@@ -2,7 +2,6 @@ package com.mud.api.controller;
 
 import com.mud.scheduler.StartupCrawlRunner;
 import com.mud.service.AnalysisService;
-import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -21,7 +20,6 @@ public class AdminController {
 
     private final StartupCrawlRunner crawlRunner;
     private final AnalysisService analysisService;
-    private final TrendService trendService;
     private final RedisConnectionFactory redisConnectionFactory;
 
     @PostMapping("/crawl")
@@ -42,7 +40,6 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> triggerAnalysis() {
         log.info("수동 분석 트리거");
         analysisService.analyzePendingItems();
-        trendService.evictTrendCaches();
         return ResponseEntity.ok(Map.of("status", "분석 시작됨 - 백그라운드에서 실행 중"));
     }
 }

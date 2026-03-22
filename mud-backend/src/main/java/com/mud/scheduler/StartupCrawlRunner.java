@@ -3,7 +3,6 @@ package com.mud.scheduler;
 import com.mud.crawler.*;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
-import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -38,7 +37,6 @@ public class StartupCrawlRunner {
     private final JetBrainsCrawler jetBrainsCrawler;
     private final GeekNewsCrawler geekNewsCrawler;
     private final AnalysisService analysisService;
-    private final TrendService trendService;
 
     @Async
     @EventListener(ApplicationReadyEvent.class)
@@ -77,6 +75,5 @@ public class StartupCrawlRunner {
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
-        trendService.evictTrendCaches();
     }
 }
