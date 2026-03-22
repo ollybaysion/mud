@@ -2,6 +2,7 @@ plugins {
     id 'org.springframework.boot' version '3.2.3'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
+    id 'jacoco'
 }
 
 group = 'com.mud'
@@ -65,6 +66,41 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, excludes: [
+                '**/crawler/*Crawler.class',   // 크롤러 (외부 HTTP 의존)
+                '**/dto/**',                    // DTO
+                '**/domain/entity/**',          // JPA 엔티티
+                '**/config/Redis*',             // Redis 설정
+                '**/config/Web*',               // Web 설정
+                '**/scheduler/**',              // 스케줄러 (통합테스트 영역)
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.20  // 20% — B7 테스트 22개 기준 초기값, 점진적으로 상향
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(jacocoTestReport.classDirectories)
+    }
 }
 
 // .env 파일을 bootRun 실행 시 자동으로 환경변수로 주입
