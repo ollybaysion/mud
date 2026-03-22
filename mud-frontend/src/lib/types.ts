@@ -44,6 +44,17 @@ export interface PageResponse<T> {
   size: number;
 }
 
+export interface WeeklyReport {
+  id: number;
+  periodStart: string;
+  periodEnd: string;
+  totalCount: number;
+  highlights: Array<Record<string, unknown>>;
+  categoryStats: Record<string, { count: number; avgScore: number }>;
+  aiSummary: string | null;
+  generatedAt: string;
+}
+
 export interface TrendFilter {
   page?: number;
   size?: number;
