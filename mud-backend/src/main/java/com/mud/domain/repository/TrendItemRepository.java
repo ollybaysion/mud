@@ -74,4 +74,8 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
     List<TrendItem> findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(
         TrendItem.AnalysisStatus status
     );
+
+    List<TrendItem> findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(
+        TrendItem.AnalysisStatus status
+    );
 }

@@ -54,23 +54,44 @@ class AnalysisServiceScoringTest {
     // --- calculateTimeliness ---
 
     @Test
-    @DisplayName("calculateTimeliness — 24시간 이내 → 2")
+    @DisplayName("calculateTimeliness — 6시간 이내 → 10")
+    void timeliness6h() {
+        int result = service.calculateTimeliness(LocalDateTime.now().minusHours(3));
+        assertThat(result).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("calculateTimeliness — 24시간 이내 → 8")
     void timeliness24h() {
         int result = service.calculateTimeliness(LocalDateTime.now().minusHours(12));
+        assertThat(result).isEqualTo(8);
+    }
+
+    @Test
+    @DisplayName("calculateTimeliness — 3일 이내 → 6")
+    void timeliness3days() {
+        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(2));
+        assertThat(result).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("calculateTimeliness — 7일 이내 → 4")
+    void timeliness7days() {
+        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(5));
+        assertThat(result).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("calculateTimeliness — 14일 이내 → 2")
+    void timeliness14days() {
+        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(10));
         assertThat(result).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("calculateTimeliness — 3일 전 → 1")
-    void timeliness3days() {
-        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(3));
-        assertThat(result).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("calculateTimeliness — 7일 초과 → 0")
-    void timelinessOver7days() {
-        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(10));
+    @DisplayName("calculateTimeliness — 14일 초과 → 0")
+    void timelinessOver14days() {
+        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(20));
         assertThat(result).isEqualTo(0);
     }
 
@@ -79,20 +100,6 @@ class AnalysisServiceScoringTest {
     void timelinessNull() {
         int result = service.calculateTimeliness(null);
         assertThat(result).isEqualTo(0);
-    }
-
-    @Test
-    @DisplayName("calculateTimeliness — 정확히 24시간 → 2")
-    void timelinessExactly24h() {
-        int result = service.calculateTimeliness(LocalDateTime.now().minusHours(24));
-        assertThat(result).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("calculateTimeliness — 정확히 7일 → 1")
-    void timelinessExactly7days() {
-        int result = service.calculateTimeliness(LocalDateTime.now().minusDays(7));
-        assertThat(result).isEqualTo(1);
     }
 
     // --- parseBatchResult with scoring ---
@@ -177,6 +184,41 @@ class AnalysisServiceScoringTest {
         assertThat(results).hasSize(1);
     }
 
+    // --- 100점 체계 합산/매핑 ---
+
+    @Test
+    @DisplayName("calculateScoreTotal — 가중치 합산")
+    void scoreTotalCalculation() {
+        // R=9×3.5 + A=8×3.0 + I=10×1.5 + T=10×2.0 = 31.5+24+15+20 = 90.5 → 91
+        int total = service.calculateScoreTotal(9, 8, 10, 10);
+        assertThat(total).isEqualTo(91);
+    }
+
+    @Test
+    @DisplayName("calculateScoreTotal — 최솟값 0")
+    void scoreTotalMin() {
+        int total = service.calculateScoreTotal(0, 0, 0, 0);
+        assertThat(total).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("scoreToStars — 85+ → 5")
+    void starsHigh() {
+        assertThat(service.scoreToStars(91)).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("scoreToStars — 0~14 → 1")
+    void starsLow() {
+        assertThat(service.scoreToStars(8)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("scoreToStars — 45~54 → 3")
+    void starsMid() {
+        assertThat(service.scoreToStars(50)).isEqualTo(3);
+    }
+
     // --- Rescore status ---
 
     @Test
@@ -195,7 +237,7 @@ class AnalysisServiceScoringTest {
         when(redisLockRegistry.obtain("analysis:rescore")).thenReturn(new ReentrantLock());
         when(transactionManager.getTransaction(any()))
             .thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
-        when(trendItemRepository.findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(any()))
+        when(trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(any()))
             .thenReturn(List.of());
 
         service.rescoreExistingItems();
@@ -207,17 +249,8 @@ class AnalysisServiceScoringTest {
     // --- Phase 1 skip ---
 
     @Test
-    @DisplayName("Phase 1 — analyzePendingItems 스킵")
-    void phase1SkipsAnalysis() {
-        ReflectionTestUtils.setField(service, "scoringPhase", 1);
-        // 예외 없이 즉시 리턴
-        service.analyzePendingItems();
-    }
-
-    @Test
-    @DisplayName("Phase 2 — analyzePendingItems 정상 실행")
-    void phase2RunsAnalysis() {
-        ReflectionTestUtils.setField(service, "scoringPhase", 2);
+    @DisplayName("analyzePendingItems — 정상 실행 (대기 아이템 없음)")
+    void analyzePendingItemsNoPending() {
         var lock = new ReentrantLock();
         when(redisLockRegistry.obtain("analysis:pending")).thenReturn(lock);
         when(trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(any()))

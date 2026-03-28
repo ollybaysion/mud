@@ -44,7 +44,7 @@ class TrendControllerTest {
     void getTrends() throws Exception {
         TrendItemResponse item = new TrendItemResponse(
             1L, "Test", "https://example.com", "GITHUB", "desc",
-            "요약", null, null, 4, List.of("AI"), null, null,
+            "요약", null, null, 4, null, List.of("AI"), null, null,
             LocalDateTime.now(), LocalDateTime.now(), null, null
         );
         TrendPageResponse page = new TrendPageResponse(List.of(item), 1, 1, 0, 20);
@@ -74,7 +74,7 @@ class TrendControllerTest {
     void getTrendDetail() throws Exception {
         TrendItemResponse item = new TrendItemResponse(
             1L, "Detail", "https://example.com", "GITHUB", "desc",
-            "요약", "심층분석", null, 5, List.of(), null, null,
+            "요약", "심층분석", null, 5, null, List.of(), null, null,
             LocalDateTime.now(), LocalDateTime.now(), null, null
         );
         when(trendService.getTrendDetail(1L)).thenReturn(item);

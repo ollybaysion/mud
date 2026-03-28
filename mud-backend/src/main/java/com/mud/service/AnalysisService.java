@@ -82,11 +82,6 @@ public class AnalysisService {
 
     @Async
     public void analyzePendingItems() {
-        if (scoringPhase == 1) {
-            log.info("Scoring Phase 1: 신규 분석 스킵 (재평가 모드)");
-            return;
-        }
-
         Lock lock = redisLockRegistry.obtain("analysis:pending");
 
         if (!lock.tryLock()) {
@@ -146,25 +141,26 @@ public class AnalysisService {
                         TrendItem item = managedMap.get(batch.get(i).getId());
                         if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
-                            : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
-                        item.setKoreanSummary(result.koreanSummary());
-                        item.setRelevanceScore(result.relevanceScore());
-                        item.setKeywords(result.keywords());
+                            : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
                         int timeliness = calculateTimeliness(item.getPublishedAt());
-                        int totalScore = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
-                        int finalScore;
-                        if (totalScore <= 1) finalScore = 1;
-                        else if (totalScore <= 3) finalScore = 2;
-                        else if (totalScore <= 5) finalScore = 3;
-                        else if (totalScore <= 7) finalScore = 4;
-                        else finalScore = 5;
+                        int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
+                        int stars = scoreToStars(scoreTotal);
 
+                        item.setKoreanSummary(result.koreanSummary());
+                        item.setKeywords(result.keywords());
+                        item.setTopicTag(result.topicTag());
+                        // 새 100점 체계
+                        item.setScoreRelevance((short) result.scoringRelevance());
+                        item.setScoreActionability((short) result.scoringActionability());
+                        item.setScoreImpact((short) result.scoringImpact());
+                        item.setScoreTimeliness((short) timeliness);
+                        item.setScoreTotal((short) scoreTotal);
+                        // 구 체계 호환 (기존 scoring_* 도 업데이트)
                         item.setScoringRelevance((short) result.scoringRelevance());
                         item.setScoringTimeliness((short) timeliness);
                         item.setScoringActionability((short) result.scoringActionability());
                         item.setScoringImpact((short) result.scoringImpact());
-                        item.setRelevanceScore(finalScore);
-                        item.setTopicTag(result.topicTag());
+                        item.setRelevanceScore(stars);
                         categoryRepository.findBySlug(result.categorySlug())
                             .ifPresent(item::setCategory);
                         item.setAnalyzedAt(LocalDateTime.now());
@@ -245,9 +241,9 @@ public class AnalysisService {
                 "categorySlug": "ai-ml 또는 rag 또는 llm 또는 cpp 또는 java 또는 devops 또는 webdev 또는 security 또는 hardware 또는 general 중 하나",
                 "keywords": ["키워드1", "키워드2", "키워드3"],
                 "scoring": {
-                  "relevance": 0부터 3 사이의 정수,
-                  "actionability": 0부터 3 사이의 정수,
-                  "impact": 0부터 2 사이의 정수
+                  "relevance": 0부터 10 사이의 정수,
+                  "actionability": 0부터 10 사이의 정수,
+                  "impact": 0부터 10 사이의 정수
                 },
                 "topicTag": "주제를 대표하는 영문 소문자 태그 (예: kubernetes, react, rust, llm)"
               }
@@ -255,22 +251,26 @@ public class AnalysisService {
 
             scoring 채점 기준:
 
-            기술 관련성 (relevance, 0~3):
-            3 = 코드, 아키텍처, 도구, 프레임워크를 직접 다룸 (예: React 19 릴리즈, Kubernetes CVE)
-            2 = 기술 업계 동향, 개발 문화, 기술 의사결정 관련
-            1 = 기술과 간접 관련 (예: 테크 기업 인사, 투자 뉴스)
-            0 = 기술과 무관
+            기술 관련성 (relevance, 0~10):
+            10 = 코드/프레임워크/도구 직접 다룸 (신규 릴리즈, CVE 패치)
+             7 = 아키텍처, 설계 패턴, 성능 최적화
+             5 = 기술 업계 동향, 개발 문화
+             3 = 기술과 간접 관련 (기업 인사, 투자)
+             0 = 기술과 무관 (정치, 스포츠, 요리)
 
-            실용성 (actionability, 0~3):
-            3 = 바로 적용 가능한 튜토리얼, 도구, 코드
-            2 = 실무 의사결정에 참고 가능
-            1 = 배경 지식 수준
-            0 = 실무 적용 불가
+            실용성 (actionability, 0~10):
+            10 = 코드 복사해서 바로 적용 가능
+             7 = 실무 의사결정에 직접 참고
+             5 = 배경 지식으로 유용
+             3 = 인사이트는 있지만 행동 어려움
+             0 = 실무 적용 불가
 
-            민감도/임팩트 (impact, 0~2):
-            2 = 대다수 개발자에게 영향
-            1 = 특정 기술 스택 사용자에게 영향
-            0 = 니치하거나 영향 범위 극소
+            임팩트 (impact, 0~10):
+            10 = 대다수 개발자에게 즉시 영향
+             7 = 특정 생태계 전체에 영향
+             5 = 해당 기술 스택 사용자에게 영향
+             3 = 니치하지만 깊은 영향
+             0 = 영향 범위 극소
             """.formatted(batch.size(), items);
     }
 
@@ -305,24 +305,15 @@ public class AnalysisService {
                 }
 
                 JsonNode scoring = node.path("scoring");
-                int sRelevance = Math.max(0, Math.min(3, scoring.path("relevance").asInt(1)));
-                int sActionability = Math.max(0, Math.min(3, scoring.path("actionability").asInt(1)));
-                int sImpact = Math.max(0, Math.min(2, scoring.path("impact").asInt(0)));
-                // timeliness는 BE에서 publishedAt 기반 자동 계산 (파싱 시점에는 0)
-                int sTimeliness = 0;
-
-                int totalScore = sRelevance + sTimeliness + sActionability + sImpact;
-                int relevanceScore;
-                if (totalScore <= 1) relevanceScore = 1;
-                else if (totalScore <= 3) relevanceScore = 2;
-                else if (totalScore <= 5) relevanceScore = 3;
-                else if (totalScore <= 7) relevanceScore = 4;
-                else relevanceScore = 5;
+                int sRelevance = Math.max(0, Math.min(10, scoring.path("relevance").asInt(5)));
+                int sActionability = Math.max(0, Math.min(10, scoring.path("actionability").asInt(3)));
+                int sImpact = Math.max(0, Math.min(10, scoring.path("impact").asInt(3)));
 
                 String topicTag = node.path("topicTag").asText(null);
 
-                results.add(new AnalysisResult(koreanSummary, categorySlug, relevanceScore, keywords,
-                    sRelevance, sTimeliness, sActionability, sImpact, topicTag));
+                // relevanceScore는 저장 시 timeliness 포함하여 계산
+                results.add(new AnalysisResult(koreanSummary, categorySlug, 0, keywords,
+                    sRelevance, 0, sActionability, sImpact, topicTag));
             }
             return results;
         } catch (Exception e) {
@@ -342,9 +333,29 @@ public class AnalysisService {
     int calculateTimeliness(LocalDateTime publishedAt) {
         if (publishedAt == null) return 0;
         long hoursAgo = java.time.Duration.between(publishedAt, LocalDateTime.now()).toHours();
-        if (hoursAgo <= 24) return 2;
-        if (hoursAgo <= 168) return 1; // 7일
+        if (hoursAgo <= 6) return 10;
+        if (hoursAgo <= 24) return 8;
+        if (hoursAgo <= 72) return 6;   // 3일
+        if (hoursAgo <= 168) return 4;  // 7일
+        if (hoursAgo <= 336) return 2;  // 14일
         return 0;
+    }
+
+    int calculateScoreTotal(int relevance, int actionability, int impact, int timeliness) {
+        double score = relevance * 3.5 + actionability * 3.0 + impact * 1.5 + timeliness * 2.0;
+        return (int) Math.round(Math.min(100, Math.max(0, score)));
+    }
+
+    int scoreToStars(int scoreTotal) {
+        if (scoreTotal < 15) return 1;
+        if (scoreTotal < 25) return 1;  // ★1.5 → 1로 매핑 (정수)
+        if (scoreTotal < 35) return 2;
+        if (scoreTotal < 45) return 2;  // ★2.5 → 2로 매핑
+        if (scoreTotal < 55) return 3;
+        if (scoreTotal < 65) return 3;  // ★3.5 → 3으로 매핑
+        if (scoreTotal < 75) return 4;
+        if (scoreTotal < 85) return 4;  // ★4.5 → 4로 매핑
+        return 5;
     }
 
     record AnalysisResult(
@@ -386,7 +397,7 @@ public class AnalysisService {
             TransactionTemplate txRead = new TransactionTemplate(transactionManager);
             txRead.setReadOnly(true);
             List<Long> doneItemIds = txRead.execute(status ->
-                trendItemRepository.findByAnalysisStatusAndScoringRelevanceIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
+                trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
                     .stream().map(TrendItem::getId).toList()
             );
 
@@ -418,28 +429,28 @@ public class AnalysisService {
                                 TrendItem item = managedMap.get(items.get(i).getId());
                                 if (item == null) continue;
                                 AnalysisResult result = (i < results.size()) ? results.get(i)
-                                    : new AnalysisResult("분석 실패", "general", 3, List.of(), 1, 0, 1, 0, null);
+                                    : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
                                 int timeliness = calculateTimeliness(item.getPublishedAt());
-                                int total = result.scoringRelevance() + timeliness + result.scoringActionability() + result.scoringImpact();
-                                int finalScore;
-                                if (total <= 1) finalScore = 1;
-                                else if (total <= 3) finalScore = 2;
-                                else if (total <= 5) finalScore = 3;
-                                else if (total <= 7) finalScore = 4;
-                                else finalScore = 5;
+                                int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
+                                int stars = scoreToStars(scoreTotal);
 
                                 item.setKoreanSummary(result.koreanSummary());
-                                item.setRelevanceScore(finalScore);
                                 item.setKeywords(result.keywords());
+                                item.setTopicTag(result.topicTag());
+                                item.setScoreRelevance((short) result.scoringRelevance());
+                                item.setScoreActionability((short) result.scoringActionability());
+                                item.setScoreImpact((short) result.scoringImpact());
+                                item.setScoreTimeliness((short) timeliness);
+                                item.setScoreTotal((short) scoreTotal);
                                 item.setScoringRelevance((short) result.scoringRelevance());
                                 item.setScoringTimeliness((short) timeliness);
                                 item.setScoringActionability((short) result.scoringActionability());
                                 item.setScoringImpact((short) result.scoringImpact());
-                                item.setTopicTag(result.topicTag());
+                                item.setRelevanceScore(stars);
                                 categoryRepository.findBySlug(result.categorySlug())
                                     .ifPresent(item::setCategory);
                                 item.setAnalyzedAt(LocalDateTime.now());
-                                if (finalScore <= 1) {
+                                if (scoreTotal < 15) {
                                     item.setAnalysisStatus(TrendItem.AnalysisStatus.REJECTED);
                                 }
                             }

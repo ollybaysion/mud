@@ -17,6 +17,7 @@ public record TrendItemResponse(
     String deepAnalysis,
     CategoryResponse category,
     Integer relevanceScore,
+    Short scoreTotal,
     List<String> keywords,
     Map<String, Short> scoring,
     String topicTag,
@@ -27,13 +28,13 @@ public record TrendItemResponse(
 ) {
     public static TrendItemResponse from(TrendItem item) {
         Map<String, Short> scoring = null;
-        if (item.getScoringRelevance() != null && item.getScoringTimeliness() != null
-                && item.getScoringActionability() != null && item.getScoringImpact() != null) {
+        if (item.getScoreRelevance() != null && item.getScoreTimeliness() != null
+                && item.getScoreActionability() != null && item.getScoreImpact() != null) {
             scoring = Map.of(
-                "relevance", item.getScoringRelevance(),
-                "timeliness", item.getScoringTimeliness(),
-                "actionability", item.getScoringActionability(),
-                "impact", item.getScoringImpact()
+                "relevance", item.getScoreRelevance(),
+                "timeliness", item.getScoreTimeliness(),
+                "actionability", item.getScoreActionability(),
+                "impact", item.getScoreImpact()
             );
         }
 
@@ -47,6 +48,7 @@ public record TrendItemResponse(
             item.getDeepAnalysis(),
             item.getCategory() != null ? CategoryResponse.from(item.getCategory()) : null,
             item.getRelevanceScore(),
+            item.getScoreTotal(),
             new ArrayList<>(item.getKeywords()),
             scoring,
             item.getTopicTag(),
