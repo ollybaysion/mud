@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { TrendItem } from '@/lib/types';
 
 const SSE_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -147,7 +148,7 @@ export function DeepAnalysisSection({ item }: Props) {
           🔬 AI 심층 분석
         </div>
         <div className="deep-analysis-content">
-          <Markdown>{analysis}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{analysis}</Markdown>
         </div>
       </div>
     );

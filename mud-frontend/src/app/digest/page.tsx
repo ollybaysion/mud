@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
 
 export const metadata: Metadata = {
@@ -74,7 +75,7 @@ export default async function DigestPage() {
             🤖 AI 주간 요약
           </div>
           <div className="deep-analysis-content">
-            <Markdown>{report.aiSummary}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]}>{report.aiSummary}</Markdown>
           </div>
         </div>
       )}
