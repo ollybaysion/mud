@@ -105,6 +105,21 @@ public class TrendItem {
     @Column(name = "topic_tag", length = 100)
     private String topicTag;
 
+    @Column(name = "score_relevance")
+    private Short scoreRelevance;
+
+    @Column(name = "score_actionability")
+    private Short scoreActionability;
+
+    @Column(name = "score_impact")
+    private Short scoreImpact;
+
+    @Column(name = "score_timeliness")
+    private Short scoreTimeliness;
+
+    @Column(name = "score_total")
+    private Short scoreTotal;
+
     public enum AnalysisStatus {
         PENDING, PROCESSING, DONE, FAILED, REJECTED
     }
