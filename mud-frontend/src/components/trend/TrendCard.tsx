@@ -24,7 +24,6 @@ export function TrendCard({ item }: Props) {
   return (
     <article
       className={`trend-card ${isRead(item.id) ? 'trend-card-read' : ''}`}
-      style={{ '--card-accent': sourceConf.color } as React.CSSProperties}
     >
       <div className="trend-card-header">
         <span
