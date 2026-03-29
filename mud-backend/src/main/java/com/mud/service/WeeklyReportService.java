@@ -1,6 +1,7 @@
 package com.mud.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mud.domain.entity.ApiUsageLog.ApiType;
 import com.mud.domain.entity.TrendItem;
 import com.mud.domain.entity.WeeklyReport;
 import com.mud.domain.repository.TrendItemRepository;
@@ -35,6 +36,7 @@ public class WeeklyReportService {
     private final ObjectMapper objectMapper;
     private final CacheManager cacheManager;
     private final PlatformTransactionManager transactionManager;
+    private final ApiUsageService apiUsageService;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -178,6 +180,8 @@ public class WeeklyReportService {
                 .block();
 
             if (response == null) return null;
+
+            apiUsageService.logUsage(ApiType.WEEKLY_REPORT, claudeModel, response);
 
             List<?> content = (List<?>) response.get("content");
             if (content == null || content.isEmpty()) return null;

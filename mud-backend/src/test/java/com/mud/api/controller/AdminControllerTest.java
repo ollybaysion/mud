@@ -36,6 +36,7 @@ class AdminControllerTest {
     @MockBean private com.mud.service.DigestService digestService;
     @MockBean private com.mud.domain.repository.DigestSubscriberRepository digestSubscriberRepository;
     @MockBean private com.mud.service.CrawlerMonitorService crawlerMonitorService;
+    @MockBean private com.mud.service.ApiUsageService apiUsageService;
 
     @Test
     @DisplayName("POST /api/admin/crawl — 인증 없이 → 401")
