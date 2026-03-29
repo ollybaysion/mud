@@ -94,7 +94,7 @@ public class CrawlerMonitorService {
         );
     }
 
-    public Map<String, Object> getCrawlerHistory(LocalDate from, LocalDate to, String status) {
+    public Map<String, Object> getCrawlerHistory(LocalDate from, LocalDate to, String status, String source) {
         LocalDateTime fromDt = from.atStartOfDay();
         LocalDateTime toDt = to.atTime(23, 59, 59);
 
@@ -103,6 +103,10 @@ public class CrawlerMonitorService {
             runs = crawlerRunRepository.findByStatusAndStartedAtBetweenOrderByStartedAtDesc(status, fromDt, toDt);
         } else {
             runs = crawlerRunRepository.findByStartedAtBetweenOrderByStartedAtDesc(fromDt, toDt);
+        }
+
+        if (source != null && !source.isBlank()) {
+            runs = runs.stream().filter(r -> source.equals(r.getSource())).toList();
         }
 
         List<Map<String, Object>> history = runs.stream().map(run -> {

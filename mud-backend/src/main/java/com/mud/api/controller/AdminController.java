@@ -69,14 +69,14 @@ public class AdminController {
 
     @GetMapping("/crawlers/history")
     public ResponseEntity<Map<String, Object>> crawlerHistory(
-            @org.springframework.web.bind.annotation.RequestParam
-            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
-            java.time.LocalDate from,
-            @org.springframework.web.bind.annotation.RequestParam
-            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
-            java.time.LocalDate to,
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String status) {
-        return ResponseEntity.ok(crawlerMonitorService.getCrawlerHistory(from, to, status));
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String source) {
+        java.time.LocalDate actualFrom = date != null ? date : (from != null ? from : java.time.LocalDate.now());
+        java.time.LocalDate actualTo = date != null ? date : (to != null ? to : java.time.LocalDate.now());
+        return ResponseEntity.ok(crawlerMonitorService.getCrawlerHistory(actualFrom, actualTo, status, source));
     }
 
     @PostMapping("/digest/test-email")
