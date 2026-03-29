@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 /**
  * GeekNews (news.hada.io) - 한국 개발자 대상 기술 뉴스 큐레이션
@@ -26,6 +27,11 @@ public class GeekNewsCrawler extends CrawlerBase {
 
     public GeekNewsCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
+    }
+
+    @Override
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.GEEKNEWS;
     }
 
     @Override

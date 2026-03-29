@@ -72,9 +72,6 @@ analysis:
   concurrency: ${ANALYSIS_CONCURRENCY:10}
   batch-size: ${ANALYSIS_BATCH_SIZE:5}
 
-scoring:
-  phase: ${SCORING_PHASE:2}
-
 digest:
   from-email: ${DIGEST_FROM_EMAIL:noreply@mud.dev}
   base-url: ${DIGEST_BASE_URL:https://mud-production-5786.up.railway.app}

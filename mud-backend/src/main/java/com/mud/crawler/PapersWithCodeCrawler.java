@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
@@ -29,6 +30,11 @@ public class PapersWithCodeCrawler extends CrawlerBase {
             .defaultHeader("User-Agent", "MudBot/1.0")
             .build();
         this.objectMapper = new ObjectMapper();
+    }
+
+    @Override
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.PAPERS_WITH_CODE;
     }
 
     @Override

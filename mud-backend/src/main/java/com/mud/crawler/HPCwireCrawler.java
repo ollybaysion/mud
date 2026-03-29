@@ -25,6 +25,7 @@ public class HPCwireCrawler extends CrawlerBase {
         super(trendItemRepository);
     }
 
+    @Override
     public CrawlSource getCrawlSource() {
         return CrawlSource.HPCWIRE;
     }

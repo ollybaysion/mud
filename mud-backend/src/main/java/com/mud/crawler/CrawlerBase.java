@@ -1,6 +1,7 @@
 package com.mud.crawler;
 
 import com.mud.domain.entity.TrendItem;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 import com.mud.domain.repository.TrendItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,4 +109,18 @@ public abstract class CrawlerBase {
     }
 
     public abstract List<TrendItem> crawl();
+
+    public abstract CrawlSource getCrawlSource();
+
+    public String getSourceName() {
+        return getCrawlSource().name();
+    }
+
+    /**
+     * AllSourcesCrawlJob 30분 스케줄에 포함할지 여부.
+     * 개별 스케줄이 있는 크롤러(HackerNews, GitHub)는 false 반환.
+     */
+    public boolean isScheduledCrawlEnabled() {
+        return true;
+    }
 }

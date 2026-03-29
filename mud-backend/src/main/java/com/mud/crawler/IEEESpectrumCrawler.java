@@ -25,6 +25,7 @@ public class IEEESpectrumCrawler extends CrawlerBase {
         super(trendItemRepository);
     }
 
+    @Override
     public CrawlSource getCrawlSource() {
         return CrawlSource.IEEE_SPECTRUM;
     }

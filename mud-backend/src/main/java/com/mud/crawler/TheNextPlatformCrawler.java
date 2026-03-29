@@ -25,6 +25,7 @@ public class TheNextPlatformCrawler extends CrawlerBase {
         super(trendItemRepository);
     }
 
+    @Override
     public CrawlSource getCrawlSource() {
         return CrawlSource.THE_NEXT_PLATFORM;
     }
