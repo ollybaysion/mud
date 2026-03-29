@@ -155,11 +155,6 @@ public class AnalysisService {
                         item.setScoreImpact((short) result.scoringImpact());
                         item.setScoreTimeliness((short) timeliness);
                         item.setScoreTotal((short) scoreTotal);
-                        // 구 체계 호환 (기존 scoring_* 도 업데이트)
-                        item.setScoringRelevance((short) result.scoringRelevance());
-                        item.setScoringTimeliness((short) timeliness);
-                        item.setScoringActionability((short) result.scoringActionability());
-                        item.setScoringImpact((short) result.scoringImpact());
                         item.setRelevanceScore(stars);
                         categoryRepository.findBySlug(result.categorySlug())
                             .ifPresent(item::setCategory);
@@ -470,10 +465,6 @@ public class AnalysisService {
                                 item.setScoreImpact((short) result.scoringImpact());
                                 item.setScoreTimeliness((short) timeliness);
                                 item.setScoreTotal((short) scoreTotal);
-                                item.setScoringRelevance((short) result.scoringRelevance());
-                                item.setScoringTimeliness((short) timeliness);
-                                item.setScoringActionability((short) result.scoringActionability());
-                                item.setScoringImpact((short) result.scoringImpact());
                                 item.setRelevanceScore(stars);
                                 categoryRepository.findBySlug(result.categorySlug())
                                     .ifPresent(item::setCategory);
