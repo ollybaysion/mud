@@ -17,7 +17,7 @@ public class TrendFilterRequest {
     private String source;
 
     @Builder.Default
-    private int minScore = 0;
+    private int minScore = 25;
 
     private String keyword;
 
