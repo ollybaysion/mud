@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
@@ -34,11 +35,20 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') ?? '';
   const categories = await api.getCategories().catch(() => []);
 
   return (
     <html lang="ko">
-      <body>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
+          nonce={nonce}
+        />
+      </head>
+      <body nonce={nonce}>
         <div className="app-layout">
           <div className="sidebar-desktop">
             <Sidebar categories={categories} />

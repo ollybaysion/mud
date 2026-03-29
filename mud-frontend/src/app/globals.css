@@ -1,5 +1,5 @@
 /* Korean font stack + base styles */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+/* Google Fonts loaded via <link> in layout.tsx for CSP nonce compatibility */
 
 *, *::before, *::after {
   box-sizing: border-box;
