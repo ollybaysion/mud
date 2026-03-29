@@ -211,6 +211,12 @@ public class AnalysisService {
 
         if (response == null) throw new RuntimeException("Claude API returned null");
 
+        String stopReason = response.get("stop_reason") != null ? response.get("stop_reason").toString() : "unknown";
+        log.info("Batch analysis: batchSize={}, stopReason={}", batch.size(), stopReason);
+        if ("max_tokens".equals(stopReason)) {
+            log.warn("Batch analysis truncated by max_tokens: batchSize={}", batch.size());
+        }
+
         String text = extractResponseText(response);
         List<AnalysisResult> results = parseBatchResult(text, batch.size());
         if (results.isEmpty()) {
@@ -598,6 +604,12 @@ public class AnalysisService {
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null for deep analysis");
+
+        String stopReason = response.get("stop_reason") != null ? response.get("stop_reason").toString() : "unknown";
+        log.info("Deep analysis: itemId={}, stopReason={}", item.getId(), stopReason);
+        if ("max_tokens".equals(stopReason)) {
+            log.warn("Deep analysis truncated by max_tokens: itemId={}", item.getId());
+        }
 
         String analysis = extractResponseText(response);
 
