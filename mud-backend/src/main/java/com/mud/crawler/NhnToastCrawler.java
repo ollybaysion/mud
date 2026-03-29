@@ -17,23 +17,23 @@ import java.util.List;
 
 @Component
 @Slf4j
-public class WoowahanCrawler extends CrawlerBase {
+public class NhnToastCrawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://techblog.woowahan.com/feed/";
+    private static final String RSS_URL = "https://meetup.toast.com/rss";
 
-    public WoowahanCrawler(TrendItemRepository trendItemRepository) {
+    public NhnToastCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
     }
 
     @Override
     public CrawlSource getCrawlSource() {
-        return CrawlSource.WOOWAHAN;
+        return CrawlSource.NHN_TOAST;
     }
 
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting Woowahan RSS crawl");
+        log.info("Starting NHN TOAST RSS crawl");
 
         try {
             Document doc = fetchXmlBrowser(RSS_URL);
@@ -62,7 +62,7 @@ public class WoowahanCrawler extends CrawlerBase {
                     .title(title)
                     .originalUrl(url)
                     .urlHash(urlHash)
-                    .source(CrawlSource.WOOWAHAN)
+                    .source(CrawlSource.NHN_TOAST)
                     .description(description)
                     .publishedAt(publishedAt)
                     .crawledAt(LocalDateTime.now())
@@ -73,10 +73,10 @@ public class WoowahanCrawler extends CrawlerBase {
                 if (saved != null) results.add(saved);
             }
         } catch (Exception e) {
-            log.error("Woowahan crawl failed: {}", e.getMessage());
+            log.error("NHN TOAST crawl failed: {}", e.getMessage());
         }
 
-        log.info("Woowahan crawl complete: {} new items", results.size());
+        log.info("NHN TOAST crawl complete: {} new items", results.size());
         return results;
     }
 }
