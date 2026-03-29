@@ -2,7 +2,7 @@
 
 **AI가 매일 읽어주는 기술 뉴스룸**
 
-18개 글로벌 테크 소스를 30분마다 자동 수집하고, Claude AI가 한국어로 요약·분석·점수화하여 개발자에게 큐레이션 해주는 기술 트렌드 플랫폼입니다.
+30개 글로벌 테크 소스를 30분마다 자동 수집하고, Claude AI가 한국어로 요약·분석·점수화하여 개발자에게 큐레이션 해주는 기술 트렌드 플랫폼입니다.
 
 ![Mud 메인 화면](docs/images/main.png)
 
@@ -10,14 +10,26 @@
 
 ## 주요 기능
 
-- **18개 소스 자동 수집** — GitHub Trending, Hacker News, ArXiv, Dev.to, Reddit 등 30분 주기 크롤링
-- **AI 한국어 요약** — Claude AI가 영문 기사를 한국어로 요약하고 관련성 점수(1~5) 부여
-- **심층 분석** — 클릭 한 번으로 최대 4,096 토큰의 AI 심층 분석 생성
-- **9개 카테고리 분류** — AI/ML, LLM, RAG, DevOps, Web, Security, Java, C++, 일반 프로그래밍
+- **30개 소스 자동 수집** — GitHub Trending, Hacker News, ArXiv, Dev.to, Reddit, NVIDIA Blog 등 30분 주기 크롤링
+- **AI 한국어 요약** — Claude AI가 영문 기사를 한국어로 요약하고 100점 기준 다차원 점수 부여
+- **AI 주간 다이제스트** — 매주 2,000+ 기사를 AI가 분석하여 핵심 트렌드 요약, 카테고리별 동향, 주목할 키워드 테이블 자동 생성
+- **심층 분석** — 클릭 한 번으로 최대 4,096 토큰의 AI 심층 분석 생성 (SSE 실시간 스트리밍)
+- **10개 카테고리 분류** — AI/ML, LLM, RAG, DevOps, Web, Security, Java, C++, 일반 프로그래밍, 하드웨어/반도체
+- **다차원 스코어링** — 관련성, 실용성, 영향력, 시의성 4개 축으로 100점 기준 평가
 - **다양한 필터** — 카테고리, 소스, 점수, 키워드로 원하는 트렌드만 탐색
 - **북마크** — 관심 트렌드를 저장하고 나중에 다시 확인
 
-## 수집 소스
+### 주간 다이제스트
+
+매주 자동 생성되는 AI 주간 트렌드 리포트입니다.
+
+- 2,000+ 기사를 AI가 분석하여 핵심 트렌드 요약
+- 카테고리별 동향 + 주목할 키워드 테이블
+- 상위 15건 하이라이트 (100점 기준)
+
+![Mud 주간 다이제스트](docs/images/digest.png)
+
+## 수집 소스 (30개)
 
 | 분야 | 소스 |
 |------|------|
@@ -26,6 +38,7 @@
 | **종합 기술 미디어** | Hacker News · InfoQ · GeekNews · TLDR |
 | **클라우드 / 인프라** | The New Stack · CNCF |
 | **언어 / 도구** | Inside Java · isocpp.org · JetBrains · Reddit |
+| **하드웨어 / 반도체** | NVIDIA Blog · Tom's Hardware · ServeTheHome · Phoronix · TechPowerUp · Hackaday · EE Times · Semi Engineering · Chips and Cheese · VideoCardz · CNX Software |
 
 ## 기술 스택
 
@@ -62,7 +75,7 @@
 ## 아키텍처
 
 ```
-[18개 Tech Sources]
+[30개 Tech Sources]
        │
        ▼
 [Crawler (JSoup/WebClient)] ──30분 주기──▶ [PostgreSQL]
@@ -149,7 +162,7 @@ npm run dev          # http://localhost:3000
 | `size` | int | 페이지 크기 (기본 20) |
 | `category` | string | 카테고리 slug |
 | `source` | string | 소스 이름 |
-| `minScore` | int | 최소 관련성 점수 (1~5) |
+| `minScore` | int | 최소 점수 (100점 기준) |
 | `keyword` | string | 키워드 검색 |
 
 ## 프로젝트 구조
@@ -158,7 +171,7 @@ npm run dev          # http://localhost:3000
 mud/
 ├── mud-backend/
 │   └── src/main/java/com/mud/backend/
-│       ├── crawler/          # 18개 크롤러 (JSoup 기반)
+│       ├── crawler/          # 30개 크롤러 (JSoup 기반)
 │       ├── service/          # 분석, 크롤링 비즈니스 로직
 │       ├── api/controller/   # REST API 컨트롤러
 │       ├── domain/           # JPA 엔티티
@@ -171,6 +184,7 @@ mud/
 │       ├── app/              # Next.js App Router 페이지
 │       │   ├── trends/       # 트렌드 목록
 │       │   ├── trends/[id]/  # 트렌드 상세 + 심층분석
+│       │   ├── digest/       # 주간 다이제스트
 │       │   └── bookmarks/    # 북마크
 │       ├── components/       # Sidebar, FilterBar, TrendCard 등
 │       ├── hooks/            # useBookmarks 등 커스텀 훅
@@ -184,9 +198,9 @@ mud/
 
 ## 데이터 파이프라인
 
-1. **수집** — Quartz 스케줄러가 30분마다 18개 크롤러를 실행. JSoup으로 HTML 파싱, WebClient로 RSS/API 호출. URL 해시로 중복 방지.
+1. **수집** — Quartz 스케줄러가 30분마다 30개 크롤러를 실행. JSoup으로 HTML 파싱, WebClient로 RSS/API 호출. URL 해시로 중복 방지.
 
-2. **분석** — 새로 수집된 아이템(PENDING)을 Claude AI(claude-haiku-4-5)로 배치 분석. 한국어 요약, 카테고리 분류, 관련성 점수(1~5), 키워드 추출.
+2. **분석** — 새로 수집된 아이템(PENDING)을 Claude AI(claude-haiku-4-5)로 배치 분석. 한국어 요약, 카테고리 분류, 다차원 점수(관련성·실용성·영향력·시의성, 100점 기준), 키워드 추출, 주제 태그 부여.
 
 3. **캐싱** — Redis에 계층별 TTL 적용 (트렌드 목록 5분, 상세 30분, 카테고리 1시간, 통계 10분). Redis 장애 시 DB 자동 폴백.
 
