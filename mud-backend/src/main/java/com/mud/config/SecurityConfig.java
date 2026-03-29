@@ -1,8 +1,11 @@
 package com.mud.config;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,10 +22,26 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@Slf4j
 public class SecurityConfig {
 
     @Value("${admin.api-key:}")
     private String adminApiKey;
+
+    private final Environment environment;
+
+    public SecurityConfig(Environment environment) {
+        this.environment = environment;
+    }
+
+    @PostConstruct
+    void validateAdminApiKey() {
+        boolean isTest = Arrays.asList(environment.getActiveProfiles()).contains("test");
+        if (!isTest && (adminApiKey == null || adminApiKey.isBlank())) {
+            throw new IllegalStateException(
+                "ADMIN_API_KEY 환경변수가 설정되지 않았습니다. 프로덕션 환경에서는 필수입니다.");
+        }
+    }
 
     @Value("${cors.allowed-origins:http://localhost:3000,http://frontend:3000}")
     private String allowedOrigins;
