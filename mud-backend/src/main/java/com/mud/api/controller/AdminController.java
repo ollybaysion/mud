@@ -98,7 +98,7 @@ public class AdminController {
     @PostMapping("/digest/send-now")
     public ResponseEntity<Map<String, String>> sendDigestNow() {
         log.info("데일리 다이제스트 즉시 발송");
-        digestService.sendDailyDigest();
+        digestService.sendDailyDigestNow();
         return ResponseEntity.ok(Map.of("status", "발송 완료"));
     }
 
