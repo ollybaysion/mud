@@ -3,6 +3,7 @@ package com.mud.api.controller;
 import com.mud.domain.repository.DigestSubscriberRepository;
 import com.mud.scheduler.StartupCrawlRunner;
 import com.mud.service.AnalysisService;
+import com.mud.service.CrawlerMonitorService;
 import com.mud.service.DigestService;
 import com.mud.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AdminController {
     private final StartupCrawlRunner crawlRunner;
     private final AnalysisService analysisService;
     private final CacheManager cacheManager;
+    private final CrawlerMonitorService crawlerMonitorService;
     private final EmailService emailService;
     private final DigestService digestService;
     private final DigestSubscriberRepository digestSubscriberRepository;
@@ -63,6 +65,23 @@ public class AdminController {
     @GetMapping("/rescore/status")
     public ResponseEntity<Map<String, Object>> rescoreStatus() {
         return ResponseEntity.ok(analysisService.getRescoreStatus());
+    }
+
+    @GetMapping("/crawlers/status")
+    public ResponseEntity<Map<String, Object>> crawlerStatus() {
+        return ResponseEntity.ok(crawlerMonitorService.getCrawlerStatus());
+    }
+
+    @GetMapping("/crawlers/history")
+    public ResponseEntity<Map<String, Object>> crawlerHistory(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String source) {
+        java.time.LocalDate actualFrom = date != null ? date : (from != null ? from : java.time.LocalDate.now());
+        java.time.LocalDate actualTo = date != null ? date : (to != null ? to : java.time.LocalDate.now());
+        return ResponseEntity.ok(crawlerMonitorService.getCrawlerHistory(actualFrom, actualTo, status, source));
     }
 
     @PostMapping("/digest/test-email")
