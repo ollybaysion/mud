@@ -3,6 +3,7 @@ package com.mud.scheduler;
 import com.mud.crawler.*;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
+import com.mud.service.CrawlerMonitorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -10,8 +11,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Component
 @Slf4j
@@ -47,6 +50,7 @@ public class StartupCrawlRunner {
     private final ChipsAndCheeseCrawler chipsAndCheeseCrawler;
     private final CNXSoftwareCrawler cnxSoftwareCrawler;
     private final AnalysisService analysisService;
+    private final CrawlerMonitorService crawlerMonitorService;
 
     @Async
     @EventListener(ApplicationReadyEvent.class)
@@ -64,36 +68,48 @@ public class StartupCrawlRunner {
     public void runAllCrawlers() {
         log.info("전체 크롤러 실행 시작");
         List<TrendItem> all = new ArrayList<>();
-        try { all.addAll(hackerNewsCrawler.crawl()); }        catch (Exception e) { log.error("HN 크롤 실패", e); }
-        try { all.addAll(devToCrawler.crawl()); }             catch (Exception e) { log.error("devto 크롤 실패", e); }
-        try { all.addAll(redditRssCrawler.crawl()); }         catch (Exception e) { log.error("Reddit 크롤 실패", e); }
-        try { all.addAll(arXivCrawler.crawl()); }             catch (Exception e) { log.error("ArXiv 크롤 실패", e); }
-        try { all.addAll(gitHubTrendingCrawler.crawl()); }    catch (Exception e) { log.error("GitHub 크롤 실패", e); }
-        try { all.addAll(papersWithCodeCrawler.crawl()); }    catch (Exception e) { log.error("PwC 크롤 실패", e); }
-        try { all.addAll(infoQCrawler.crawl()); }             catch (Exception e) { log.error("InfoQ 크롤 실패", e); }
-        try { all.addAll(huggingFaceCrawler.crawl()); }       catch (Exception e) { log.error("HuggingFace 크롤 실패", e); }
-        try { all.addAll(lobstersCrawler.crawl()); }          catch (Exception e) { log.error("Lobsters 크롤 실패", e); }
-        try { all.addAll(insideJavaCrawler.crawl()); }        catch (Exception e) { log.error("InsideJava 크롤 실패", e); }
-        try { all.addAll(isoCppCrawler.crawl()); }            catch (Exception e) { log.error("ISOCpp 크롤 실패", e); }
-        try { all.addAll(tldrCrawler.crawl()); }              catch (Exception e) { log.error("TLDR 크롤 실패", e); }
-        try { all.addAll(theNewStackCrawler.crawl()); }       catch (Exception e) { log.error("NewStack 크롤 실패", e); }
-        try { all.addAll(cncfCrawler.crawl()); }              catch (Exception e) { log.error("CNCF 크롤 실패", e); }
-        try { all.addAll(stackOverflowBlogCrawler.crawl()); } catch (Exception e) { log.error("SO Blog 크롤 실패", e); }
-        try { all.addAll(martinFowlerCrawler.crawl()); }      catch (Exception e) { log.error("MartinFowler 크롤 실패", e); }
-        try { all.addAll(jetBrainsCrawler.crawl()); }         catch (Exception e) { log.error("JetBrains 크롤 실패", e); }
-        try { all.addAll(geekNewsCrawler.crawl()); }          catch (Exception e) { log.error("GeekNews 크롤 실패", e); }
-        try { all.addAll(nvidiaBlogCrawler.crawl()); }       catch (Exception e) { log.error("NVIDIA Blog 크롤 실패", e); }
-        try { all.addAll(serveTheHomeCrawler.crawl()); }     catch (Exception e) { log.error("ServeTheHome 크롤 실패", e); }
-        try { all.addAll(tomsHardwareCrawler.crawl()); }     catch (Exception e) { log.error("Tom's HW 크롤 실패", e); }
-        try { all.addAll(phoronixCrawler.crawl()); }         catch (Exception e) { log.error("Phoronix 크롤 실패", e); }
-        try { all.addAll(techPowerUpCrawler.crawl()); }      catch (Exception e) { log.error("TechPowerUp 크롤 실패", e); }
-        try { all.addAll(hackadayCrawler.crawl()); }         catch (Exception e) { log.error("Hackaday 크롤 실패", e); }
-        try { all.addAll(eeTimesCrawler.crawl()); }          catch (Exception e) { log.error("EE Times 크롤 실패", e); }
-        try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
-        try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
-        try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
+        runCrawler("HACKER_NEWS", hackerNewsCrawler::crawl, all);
+        runCrawler("DEV_TO", devToCrawler::crawl, all);
+        runCrawler("REDDIT", redditRssCrawler::crawl, all);
+        runCrawler("ARXIV", arXivCrawler::crawl, all);
+        runCrawler("GITHUB", gitHubTrendingCrawler::crawl, all);
+        runCrawler("PAPERS_WITH_CODE", papersWithCodeCrawler::crawl, all);
+        runCrawler("INFOQ", infoQCrawler::crawl, all);
+        runCrawler("HUGGING_FACE", huggingFaceCrawler::crawl, all);
+        runCrawler("LOBSTERS", lobstersCrawler::crawl, all);
+        runCrawler("INSIDE_JAVA", insideJavaCrawler::crawl, all);
+        runCrawler("ISOCPP", isoCppCrawler::crawl, all);
+        runCrawler("TLDR_AI", tldrCrawler::crawl, all);
+        runCrawler("THE_NEW_STACK", theNewStackCrawler::crawl, all);
+        runCrawler("CNCF", cncfCrawler::crawl, all);
+        runCrawler("STACKOVERFLOW_BLOG", stackOverflowBlogCrawler::crawl, all);
+        runCrawler("MARTIN_FOWLER", martinFowlerCrawler::crawl, all);
+        runCrawler("JETBRAINS", jetBrainsCrawler::crawl, all);
+        runCrawler("GEEKNEWS", geekNewsCrawler::crawl, all);
+        runCrawler("NVIDIA_BLOG", nvidiaBlogCrawler::crawl, all);
+        runCrawler("SERVE_THE_HOME", serveTheHomeCrawler::crawl, all);
+        runCrawler("TOMS_HARDWARE", tomsHardwareCrawler::crawl, all);
+        runCrawler("PHORONIX", phoronixCrawler::crawl, all);
+        runCrawler("TECHPOWERUP", techPowerUpCrawler::crawl, all);
+        runCrawler("HACKADAY", hackadayCrawler::crawl, all);
+        runCrawler("EE_TIMES", eeTimesCrawler::crawl, all);
+        runCrawler("SEMI_ENGINEERING", semiEngineeringCrawler::crawl, all);
+        runCrawler("CHIPS_AND_CHEESE", chipsAndCheeseCrawler::crawl, all);
+        runCrawler("CNX_SOFTWARE", cnxSoftwareCrawler::crawl, all);
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
+    }
+
+    private void runCrawler(String source, Supplier<List<TrendItem>> crawler, List<TrendItem> all) {
+        LocalDateTime startedAt = LocalDateTime.now();
+        try {
+            List<TrendItem> items = crawler.get();
+            all.addAll(items);
+            crawlerMonitorService.recordRun(source, startedAt, items.size(), null);
+        } catch (Exception e) {
+            log.error("{} 크롤 실패", source, e);
+            crawlerMonitorService.recordRun(source, startedAt, 0, e.getMessage());
+        }
     }
 }
