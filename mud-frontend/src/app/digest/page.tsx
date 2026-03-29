@@ -102,7 +102,7 @@ export default async function DigestPage() {
                   {slug}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  {stats.count}개 · 평균 ★{(stats.avgScore * 20).toFixed(0)}
+                  {stats.count}개 · 평균 ★{Math.round(stats.avgScore)}
                 </div>
               </Link>
             ))}
