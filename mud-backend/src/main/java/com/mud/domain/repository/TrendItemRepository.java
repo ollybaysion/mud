@@ -81,4 +81,8 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
     List<TrendItem> findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(
         TrendItem.AnalysisStatus status
     );
+
+    List<TrendItem> findByAnalysisStatusAndCrawledAtBetweenAndScoreTotalIsNull(
+        TrendItem.AnalysisStatus status, java.time.LocalDateTime from, java.time.LocalDateTime to
+    );
 }

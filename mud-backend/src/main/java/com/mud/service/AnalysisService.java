@@ -388,7 +388,7 @@ public class AnalysisService {
     private final java.util.concurrent.atomic.AtomicBoolean rescoreInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Async
-    public void rescoreExistingItems() {
+    public void rescoreExistingItems(java.time.LocalDate from, java.time.LocalDate to) {
         Lock rescoreLock = redisLockRegistry.obtain("analysis:rescore");
         if (!rescoreLock.tryLock()) {
             log.info("재평가가 이미 진행 중입니다 (분산 락 보유 중)");
@@ -406,10 +406,17 @@ public class AnalysisService {
         try {
             TransactionTemplate txRead = new TransactionTemplate(transactionManager);
             txRead.setReadOnly(true);
-            List<Long> doneItemIds = txRead.execute(status ->
-                trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
-                    .stream().map(TrendItem::getId).toList()
-            );
+            List<Long> doneItemIds = txRead.execute(status -> {
+                if (from != null) {
+                    LocalDateTime fromDt = from.atStartOfDay();
+                    LocalDateTime toDt = (to != null ? to : java.time.LocalDate.now()).plusDays(1).atStartOfDay();
+                    return trendItemRepository.findByAnalysisStatusAndCrawledAtBetweenAndScoreTotalIsNull(
+                        TrendItem.AnalysisStatus.DONE, fromDt, toDt)
+                        .stream().map(TrendItem::getId).toList();
+                }
+                return trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
+                    .stream().map(TrendItem::getId).toList();
+            });
 
             rescoreTotal = doneItemIds.size();
             log.info("재평가 시작: {}개 아이템", rescoreTotal);

@@ -56,9 +56,11 @@ public class AdminController {
     }
 
     @PostMapping("/rescore")
-    public ResponseEntity<Map<String, String>> triggerRescore() {
-        log.info("재평가 배치 트리거");
-        analysisService.rescoreExistingItems();
+    public ResponseEntity<Map<String, String>> triggerRescore(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate to) {
+        log.info("재평가 배치 트리거: from={}, to={}", from, to);
+        analysisService.rescoreExistingItems(from, to);
         return ResponseEntity.ok(Map.of("status", "재평가 시작됨 - 백그라운드에서 실행 중"));
     }
 
