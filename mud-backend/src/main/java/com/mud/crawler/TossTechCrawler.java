@@ -17,23 +17,23 @@ import java.util.List;
 
 @Component
 @Slf4j
-public class IEEESpectrumCrawler extends CrawlerBase {
+public class TossTechCrawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://spectrum.ieee.org/feeds/feed.rss";
+    private static final String RSS_URL = "https://toss.tech/rss.xml";
 
-    public IEEESpectrumCrawler(TrendItemRepository trendItemRepository) {
+    public TossTechCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
     }
 
     @Override
     public CrawlSource getCrawlSource() {
-        return CrawlSource.IEEE_SPECTRUM;
+        return CrawlSource.TOSS_TECH;
     }
 
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting IEEE Spectrum RSS crawl");
+        log.info("Starting Toss Tech RSS crawl");
 
         try {
             Document doc = fetchXmlBrowser(RSS_URL);
@@ -62,7 +62,7 @@ public class IEEESpectrumCrawler extends CrawlerBase {
                     .title(title)
                     .originalUrl(url)
                     .urlHash(urlHash)
-                    .source(CrawlSource.IEEE_SPECTRUM)
+                    .source(CrawlSource.TOSS_TECH)
                     .description(description)
                     .publishedAt(publishedAt)
                     .crawledAt(LocalDateTime.now())
@@ -73,10 +73,10 @@ public class IEEESpectrumCrawler extends CrawlerBase {
                 if (saved != null) results.add(saved);
             }
         } catch (Exception e) {
-            log.error("IEEE Spectrum crawl failed: {}", e.getMessage());
+            log.error("Toss Tech crawl failed: {}", e.getMessage());
         }
 
-        log.info("IEEE Spectrum crawl complete: {} new items", results.size());
+        log.info("Toss Tech crawl complete: {} new items", results.size());
         return results;
     }
 }
