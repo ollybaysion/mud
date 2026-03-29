@@ -45,6 +45,15 @@ spring:
   cache:
     type: redis
 
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
   task:
     execution:
       pool:
@@ -65,6 +74,9 @@ analysis:
 
 scoring:
   phase: ${SCORING_PHASE:2}
+
+digest:
+  from-email: ${DIGEST_FROM_EMAIL:noreply@mud.dev}
 
 claude:
   api:
