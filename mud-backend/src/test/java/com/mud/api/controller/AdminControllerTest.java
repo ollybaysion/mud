@@ -1,6 +1,5 @@
 package com.mud.api.controller;
 
-import com.mud.config.ApiKeyAuthFilter;
 import com.mud.config.SecurityConfig;
 import com.mud.scheduler.StartupCrawlRunner;
 import com.mud.service.AnalysisService;
@@ -9,12 +8,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisServerCommands;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.Collection;
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,13 +24,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = AdminController.class)
 @Import(SecurityConfig.class)
+@ActiveProfiles("test")
 @TestPropertySource(properties = {"admin.api-key=test-secret", "cors.allowed-origins=http://localhost:3000"})
 class AdminControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockBean private StartupCrawlRunner crawlRunner;
     @MockBean private AnalysisService analysisService;
-    @MockBean private RedisConnectionFactory redisConnectionFactory;
+    @MockBean private CacheManager cacheManager;
 
     @Test
     @DisplayName("POST /api/admin/crawl — 인증 없이 → 401")
@@ -60,17 +63,19 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/admin/flush-cache — 유효한 키 → 200")
+    @DisplayName("POST /api/admin/flush-cache — 유효한 키 → 200 + 캐시 클리어")
     void flushCacheWithAuth() throws Exception {
-        RedisConnection conn = mock(RedisConnection.class);
-        RedisServerCommands serverCommands = mock(RedisServerCommands.class);
-        when(redisConnectionFactory.getConnection()).thenReturn(conn);
-        when(conn.serverCommands()).thenReturn(serverCommands);
+        ConcurrentMapCache trendsCache = new ConcurrentMapCache("trends");
+        when(cacheManager.getCacheNames()).thenReturn(List.of("trends"));
+        when(cacheManager.getCache("trends")).thenReturn(trendsCache);
 
         mockMvc.perform(post("/api/admin/flush-cache")
                 .header("X-API-Key", "test-secret"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").exists());
+
+        verify(cacheManager).getCacheNames();
+        verify(cacheManager).getCache("trends");
     }
 
     @Test
