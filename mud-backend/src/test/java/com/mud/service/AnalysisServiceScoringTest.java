@@ -240,7 +240,7 @@ class AnalysisServiceScoringTest {
         when(trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(any()))
             .thenReturn(List.of());
 
-        service.rescoreExistingItems();
+        service.rescoreExistingItems(null, null);
 
         Map<String, Object> status = service.getRescoreStatus();
         assertThat(status.get("total")).isEqualTo(0);
