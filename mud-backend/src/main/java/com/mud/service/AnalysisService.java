@@ -374,10 +374,6 @@ public class AnalysisService {
         item.setScoreImpact((short) result.scoringImpact());
         item.setScoreTimeliness((short) timeliness);
         item.setScoreTotal((short) scoreTotal);
-        item.setScoringRelevance((short) result.scoringRelevance());
-        item.setScoringTimeliness((short) timeliness);
-        item.setScoringActionability((short) result.scoringActionability());
-        item.setScoringImpact((short) result.scoringImpact());
         item.setRelevanceScore(stars);
         categoryRepository.findBySlug(result.categorySlug())
             .ifPresent(item::setCategory);
