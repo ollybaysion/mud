@@ -174,7 +174,7 @@ public class WeeklyReportService {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(240))
                 .block();
 
             if (response == null) return null;

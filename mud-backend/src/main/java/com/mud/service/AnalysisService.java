@@ -201,7 +201,7 @@ public class AnalysisService {
             .bodyValue(requestBody)
             .retrieve()
             .bodyToMono(Map.class)
-            .timeout(Duration.ofSeconds(120))
+            .timeout(Duration.ofSeconds(180))
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null");
