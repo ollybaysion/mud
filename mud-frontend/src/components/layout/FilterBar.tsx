@@ -2,38 +2,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { SOURCE_CONFIG } from '@/constants/sources';
 
 const SOURCES = [
   { value: '', label: '모든 소스' },
-  { value: 'GITHUB', label: '🐙 GitHub' },
-  { value: 'HACKER_NEWS', label: '🧡 Hacker News' },
-  { value: 'DEV_TO', label: '💻 dev.to' },
-  { value: 'ARXIV', label: '📄 ArXiv' },
-  { value: 'REDDIT', label: '🔴 Reddit' },
-  { value: 'PAPERS_WITH_CODE', label: '🔬 Papers With Code' },
-  { value: 'INFOQ', label: '📰 InfoQ' },
-  { value: 'HUGGING_FACE', label: '🤗 Hugging Face' },
-  { value: 'LOBSTERS', label: '🦞 Lobsters' },
-  { value: 'INSIDE_JAVA', label: '☕ Inside Java' },
-  { value: 'ISOCPP', label: '⚡ isocpp.org' },
-  { value: 'TLDR_AI', label: '📧 TLDR' },
-  { value: 'THE_NEW_STACK', label: '☁️ The New Stack' },
-  { value: 'CNCF', label: '🐳 CNCF' },
-  { value: 'STACKOVERFLOW_BLOG', label: '📚 Stack Overflow' },
-  { value: 'MARTIN_FOWLER', label: '🏗️ Martin Fowler' },
-  { value: 'JETBRAINS', label: '🧠 JetBrains' },
-  { value: 'GEEKNEWS', label: '🇰🇷 GeekNews' },
-  { value: 'NVIDIA_BLOG', label: '🟢 NVIDIA Blog' },
-  { value: 'SERVE_THE_HOME', label: '🖥️ ServeTheHome' },
-  { value: 'TOMS_HARDWARE', label: "🔧 Tom's Hardware" },
-  { value: 'PHORONIX', label: '🐧 Phoronix' },
-  { value: 'TECHPOWERUP', label: '⚡ TechPowerUp' },
-  { value: 'HACKADAY', label: '🛠️ Hackaday' },
-  { value: 'EE_TIMES', label: '📡 EE Times' },
-  { value: 'SEMI_ENGINEERING', label: '🔬 Semi Engineering' },
-  { value: 'CHIPS_AND_CHEESE', label: '🧀 Chips and Cheese' },
-  { value: 'VIDEOCARDZ', label: '🎮 VideoCardz' },
-  { value: 'CNX_SOFTWARE', label: '💾 CNX Software' },
+  ...Object.entries(SOURCE_CONFIG).map(([key, conf]) => ({
+    value: key,
+    label: `${conf.emoji} ${conf.label}`,
+  })),
 ];
 
 const SCORE_OPTIONS = [
