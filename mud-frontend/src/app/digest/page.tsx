@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
+import { SOURCE_CONFIG } from '@/constants/sources';
 
 export const metadata: Metadata = {
   title: '주간 다이제스트',
@@ -126,12 +127,7 @@ export default async function DigestPage() {
                   padding: '12px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  {(item.scoreTotal != null || item.relevanceScore != null) && (
-                    <span style={{ color: '#a855f7', fontWeight: 600, fontSize: '12px' }}>
-                      ★{String(item.scoreTotal ?? (Number(item.relevanceScore) * 20))}
-                    </span>
-                  )}
+                <div style={{ marginBottom: '6px' }}>
                   {item.id != null ? (
                     <Link href={`/trends/${String(item.id)}`} style={{ fontSize: '14px', fontWeight: 600 }}>
                       {String(item.title ?? '')}
@@ -140,8 +136,28 @@ export default async function DigestPage() {
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{String(item.title ?? '')}</span>
                   )}
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  {(item.scoreTotal != null || item.relevanceScore != null) && (
+                    <span style={{ color: '#a855f7', fontWeight: 600, fontSize: '12px' }}>
+                      ★{String(item.scoreTotal ?? (Number(item.relevanceScore) * 20))}
+                    </span>
+                  )}
+                  {item.source != null && (() => {
+                    const src = SOURCE_CONFIG[String(item.source)];
+                    return src ? (
+                      <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                        {src.emoji} {src.label}
+                      </span>
+                    ) : null;
+                  })()}
+                  {item.categorySlug != null && (
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                      {String(item.categorySlug)}
+                    </span>
+                  )}
+                </div>
                 {item.koreanSummary != null && (
-                  <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.6, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                     {String(item.koreanSummary)}
                   </p>
                 )}
