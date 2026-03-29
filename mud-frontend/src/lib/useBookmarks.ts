@@ -66,7 +66,12 @@ function getServerSnapshot(): string {
 
 export function useBookmarks() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const bookmarks: TrendItem[] = JSON.parse(raw);
+  let bookmarks: TrendItem[];
+  try {
+    bookmarks = JSON.parse(raw);
+  } catch {
+    bookmarks = [];
+  }
 
   const isBookmarked = useCallback(
     (id: number) => bookmarks.some((item) => item.id === id),
