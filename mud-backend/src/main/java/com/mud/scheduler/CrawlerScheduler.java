@@ -1,6 +1,7 @@
 package com.mud.scheduler;
 
 import com.mud.scheduler.jobs.AllSourcesCrawlJob;
+import com.mud.scheduler.jobs.DailyDigestJob;
 import com.mud.scheduler.jobs.GitHubCrawlJob;
 import com.mud.scheduler.jobs.HackerNewsCrawlJob;
 import com.mud.scheduler.jobs.WeeklyReportJob;
@@ -80,6 +81,24 @@ public class CrawlerScheduler {
             .forJob(weeklyReportJobDetail)
             .withIdentity("weeklyReportTrigger")
             .withSchedule(CronScheduleBuilder.cronSchedule("0 0 16 ? * SUN"))
+            .build();
+    }
+
+    // Daily Digest - every day 22:00 UTC (07:00 KST next day)
+    @Bean
+    public JobDetail dailyDigestJobDetail() {
+        return JobBuilder.newJob(DailyDigestJob.class)
+            .withIdentity("dailyDigestJob")
+            .storeDurably()
+            .build();
+    }
+
+    @Bean
+    public Trigger dailyDigestTrigger(JobDetail dailyDigestJobDetail) {
+        return TriggerBuilder.newTrigger()
+            .forJob(dailyDigestJobDetail)
+            .withIdentity("dailyDigestTrigger")
+            .withSchedule(CronScheduleBuilder.cronSchedule("0 0 22 * * ?"))
             .build();
     }
 }
