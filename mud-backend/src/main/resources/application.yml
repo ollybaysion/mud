@@ -78,6 +78,7 @@ scoring:
 digest:
   from-email: ${DIGEST_FROM_EMAIL:noreply@mud.dev}
   base-url: ${DIGEST_BASE_URL:https://mud-production-5786.up.railway.app}
+  frontend-url: ${DIGEST_FRONTEND_URL:https://mud-frontend-production.up.railway.app}
 
 claude:
   api:

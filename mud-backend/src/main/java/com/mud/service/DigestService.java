@@ -31,6 +31,9 @@ public class DigestService {
     @Value("${digest.base-url:https://mud-production-5786.up.railway.app}")
     private String baseUrl;
 
+    @Value("${digest.frontend-url:https://mud-frontend-production.up.railway.app}")
+    private String frontendUrl;
+
     @Transactional
     public void sendDailyDigest() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -64,21 +67,27 @@ public class DigestService {
         String dateLabel = yesterday.format(DateTimeFormatter.ofPattern("M월 d일"));
         String subject = "⚗️ Mud 데일리 트렌드 — " + dateLabel;
 
-        int sentCount = 0;
-        for (DigestSubscriber subscriber : subscribers) {
-            String html = buildDigestHtml(topItems, dateLabel, subscriber.getUnsubscribeToken());
-            emailService.sendHtmlEmail(subscriber.getEmail(), subject, html);
-            sentCount++;
-        }
-
+        // 트랜잭션 내에서 digest 저장 먼저
         DailyDigest digest = DailyDigest.builder()
             .digestDate(yesterday)
             .itemCount(topItems.size())
-            .sentCount(sentCount)
+            .sentCount(subscribers.size())
             .build();
         dailyDigestRepository.save(digest);
 
-        log.info("데일리 다이제스트 발송 완료: date={}, items={}, sent={}", yesterday, topItems.size(), sentCount);
+        // 트랜잭션 커밋 후 이메일 발송 (비동기)
+        for (DigestSubscriber subscriber : subscribers) {
+            String html = buildDigestHtml(topItems, dateLabel, subscriber.getUnsubscribeToken());
+            emailService.sendHtmlEmail(subscriber.getEmail(), subject, html);
+        }
+
+        log.info("데일리 다이제스트 발송 완료: date={}, items={}, sent={}", yesterday, topItems.size(), subscribers.size());
+    }
+
+    private String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;").replace("<", "&lt;")
+                   .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private String buildDigestHtml(List<TrendItem> items, String dateLabel, String unsubscribeToken) {
@@ -86,8 +95,7 @@ public class DigestService {
             String category = item.getCategory() != null ? item.getCategory().getDisplayName() : "일반";
             String summary = item.getKoreanSummary() != null ? item.getKoreanSummary() : "";
             String score = item.getScoreTotal() != null ? String.valueOf(item.getScoreTotal()) : "?";
-            String url = baseUrl.replace("mud-production-5786.up.railway.app", "mud-frontend-production.up.railway.app")
-                + "/trends/" + item.getId();
+            String url = frontendUrl + "/trends/" + item.getId();
 
             return """
                 <tr>
@@ -100,7 +108,7 @@ public class DigestService {
                         <p style="font-size: 13px; color: #555; margin: 4px 0 0; line-height: 1.5;">%s</p>
                     </td>
                 </tr>
-                """.formatted(score, category, url, item.getTitle(), summary);
+                """.formatted(escapeHtml(score), escapeHtml(category), url, escapeHtml(item.getTitle()), escapeHtml(summary));
         }).collect(Collectors.joining());
 
         String unsubscribeUrl = baseUrl + "/api/digest/unsubscribe?token=" + unsubscribeToken;
