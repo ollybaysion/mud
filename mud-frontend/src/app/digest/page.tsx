@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { api } from '@/lib/api';
+import { ShareDigest } from '@/components/ui/ShareDigest';
 import { SOURCE_CONFIG } from '@/constants/sources';
 
 export const metadata: Metadata = {
@@ -57,9 +58,16 @@ export default async function DigestPage() {
       <h1 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>
         📊 주간 트렌드 다이제스트
       </h1>
-      <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '24px' }}>
-        {periodLabel} · 총 {report.totalCount.toLocaleString()}개 기사 분석
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <p style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
+          {periodLabel} · 총 {report.totalCount.toLocaleString()}개 기사 분석
+        </p>
+        <ShareDigest
+          periodStart={report.periodStart}
+          periodEnd={report.periodEnd}
+          highlights={report.highlights}
+        />
+      </div>
 
       {report.aiSummary && (
         <div style={{
