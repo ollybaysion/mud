@@ -73,7 +73,7 @@ claude:
     model: claude-haiku-4-5-20251001
     max-tokens: 2048
     deep-analysis-model: ${CLAUDE_DEEP_ANALYSIS_MODEL:claude-sonnet-4-6}
-    deep-analysis-max-tokens: ${CLAUDE_DEEP_ANALYSIS_MAX_TOKENS:4096}
+    deep-analysis-max-tokens: ${CLAUDE_DEEP_ANALYSIS_MAX_TOKENS:8192}
 
 logging:
   level:
