@@ -115,4 +115,12 @@ public abstract class CrawlerBase {
     public String getSourceName() {
         return getCrawlSource().name();
     }
+
+    /**
+     * AllSourcesCrawlJob 30분 스케줄에 포함할지 여부.
+     * 개별 스케줄이 있는 크롤러(HackerNews, GitHub)는 false 반환.
+     */
+    public boolean isScheduledCrawlEnabled() {
+        return true;
+    }
 }

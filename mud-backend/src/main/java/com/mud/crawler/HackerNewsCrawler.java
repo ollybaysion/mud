@@ -41,6 +41,11 @@ public class HackerNewsCrawler extends CrawlerBase {
     }
 
     @Override
+    public boolean isScheduledCrawlEnabled() {
+        return false; // 개별 30분 스케줄 있음 (HackerNewsCrawlJob)
+    }
+
+    @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
         log.info("Starting Hacker News crawl");

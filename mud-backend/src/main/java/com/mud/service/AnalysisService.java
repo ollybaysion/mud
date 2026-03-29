@@ -90,11 +90,14 @@ public class AnalysisService {
         }
 
         try {
-            List<TrendItem.AnalysisStatus> statuses = List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED);
-            int pageSize = batchSize * 10; // 페이지당 최대 로드 수
+            // PENDING만 조회 — FAILED는 재시도 시 무한 루프 방지
+            List<TrendItem.AnalysisStatus> statuses = List.of(TrendItem.AnalysisStatus.PENDING);
+            int pageSize = batchSize * 10;
             int totalProcessed = 0;
+            int maxIterations = 100;
 
             Page<TrendItem> page;
+            int iteration = 0;
             do {
                 page = trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(
                     statuses, PageRequest.of(0, pageSize));
@@ -117,7 +120,7 @@ public class AnalysisService {
 
                 log.info("Analysis page complete: {}/{} batches, total processed so far: {}",
                     analyzedBatches.get(), batches.size(), totalProcessed);
-            } while (page.hasNext());
+            } while (page.hasNext() && ++iteration < maxIterations);
 
             if (totalProcessed > 0) {
                 log.info("Analysis complete: {} items processed", totalProcessed);
