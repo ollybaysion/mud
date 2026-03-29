@@ -102,7 +102,7 @@ export default async function DigestPage() {
                   {slug}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  {stats.count}개 · 평균 ★{stats.avgScore.toFixed(1)}
+                  {stats.count}개 · 평균 ★{Math.round(stats.avgScore)}
                 </div>
               </Link>
             ))}
@@ -127,9 +127,9 @@ export default async function DigestPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  {item.relevanceScore != null && (
+                  {(item.scoreTotal != null || item.relevanceScore != null) && (
                     <span style={{ color: '#a855f7', fontWeight: 600, fontSize: '12px' }}>
-                      ★{String(item.relevanceScore)}
+                      ★{String(item.scoreTotal ?? (Number(item.relevanceScore) * 20))}
                     </span>
                   )}
                   {item.id != null ? (
