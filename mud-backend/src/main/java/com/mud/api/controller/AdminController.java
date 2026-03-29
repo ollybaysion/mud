@@ -4,6 +4,7 @@ import com.mud.domain.repository.DigestSubscriberRepository;
 import com.mud.scheduler.StartupCrawlRunner;
 import com.mud.service.AnalysisService;
 import com.mud.service.CrawlerMonitorService;
+import com.mud.service.ApiUsageService;
 import com.mud.service.DigestService;
 import com.mud.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class AdminController {
     private final EmailService emailService;
     private final DigestService digestService;
     private final DigestSubscriberRepository digestSubscriberRepository;
+    private final ApiUsageService apiUsageService;
 
     @PostMapping("/crawl")
     public ResponseEntity<Map<String, String>> triggerCrawl() {
@@ -100,6 +102,12 @@ public class AdminController {
         log.info("데일리 다이제스트 즉시 발송");
         digestService.sendDailyDigestNow();
         return ResponseEntity.ok(Map.of("status", "발송 완료"));
+    }
+
+    @GetMapping("/usage/summary")
+    public ResponseEntity<Map<String, Object>> usageSummary(
+            @RequestParam(defaultValue = "7") int days) {
+        return ResponseEntity.ok(apiUsageService.getSummary(days));
     }
 
     @GetMapping("/digest/subscribers")

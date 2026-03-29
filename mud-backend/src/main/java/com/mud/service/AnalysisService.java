@@ -2,6 +2,7 @@ package com.mud.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mud.domain.entity.ApiUsageLog.ApiType;
 import com.mud.domain.entity.TrendItem;
 import com.mud.domain.repository.CategoryRepository;
 import com.mud.domain.repository.TrendItemRepository;
@@ -51,6 +52,7 @@ public class AnalysisService {
     private final CacheManager cacheManager;
     private final TrendService trendService;
     private final RedisLockRegistry redisLockRegistry;
+    private final ApiUsageService apiUsageService;
 
     @Value("${claude.api.model}")
     private String claudeModel;
@@ -146,7 +148,7 @@ public class AnalysisService {
                     trendItemRepository.saveAll(managed);
                 });
 
-                List<AnalysisResult> results = callClaudeApiBatch(batch);
+                List<AnalysisResult> results = callClaudeApiBatch(batch, ApiType.BATCH_ANALYSIS);
 
                 tx.executeWithoutResult(status -> {
                     Map<Long, TrendItem> managedMap = trendItemRepository.findAllById(batchIds)
@@ -183,7 +185,7 @@ public class AnalysisService {
         }
     }
 
-    private List<AnalysisResult> callClaudeApiBatch(List<TrendItem> batch) {
+    private List<AnalysisResult> callClaudeApiBatch(List<TrendItem> batch, ApiType apiType) {
         String prompt = buildBatchPrompt(batch);
 
         Map<String, Object> requestBody = Map.of(
@@ -203,6 +205,8 @@ public class AnalysisService {
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null");
+
+        apiUsageService.logUsage(apiType, claudeModel, response);
 
         String stopReason = response.get("stop_reason") != null ? response.get("stop_reason").toString() : "unknown";
         log.info("Batch analysis: batchSize={}, stopReason={}", batch.size(), stopReason);
@@ -460,7 +464,7 @@ public class AnalysisService {
                             return managed;
                         });
 
-                        List<AnalysisResult> results = callClaudeApiBatch(items);
+                        List<AnalysisResult> results = callClaudeApiBatch(items, ApiType.RESCORE);
 
                         tx.executeWithoutResult(status -> {
                             Map<Long, TrendItem> managedMap = trendItemRepository.findAllById(batchIds)
@@ -619,6 +623,8 @@ public class AnalysisService {
             .block();
 
         if (response == null) throw new RuntimeException("Claude API returned null for deep analysis");
+
+        apiUsageService.logUsage(ApiType.DEEP_ANALYSIS, deepAnalysisModel, response);
 
         String stopReason = response.get("stop_reason") != null ? response.get("stop_reason").toString() : "unknown";
         log.info("Deep analysis: itemId={}, stopReason={}", item.getId(), stopReason);
