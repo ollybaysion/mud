@@ -44,6 +44,9 @@ dependencies {
     // Distributed Lock
     implementation 'org.springframework.integration:spring-integration-redis'
 
+    // Mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // Data
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
