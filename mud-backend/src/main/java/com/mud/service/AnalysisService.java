@@ -383,7 +383,7 @@ public class AnalysisService {
     private final java.util.concurrent.atomic.AtomicBoolean rescoreInProgress = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @Async
-    public void rescoreExistingItems(java.time.LocalDate from, java.time.LocalDate to) {
+    public void rescoreExistingItems(java.time.LocalDate from, java.time.LocalDate to, boolean force) {
         Lock rescoreLock = redisLockRegistry.obtain("analysis:rescore");
         if (!rescoreLock.tryLock()) {
             log.info("재평가가 이미 진행 중입니다 (분산 락 보유 중)");
@@ -402,11 +402,22 @@ public class AnalysisService {
             TransactionTemplate txRead = new TransactionTemplate(transactionManager);
             txRead.setReadOnly(true);
             List<Long> doneItemIds = txRead.execute(status -> {
+                if (from != null && force) {
+                    LocalDateTime fromDt = from.atStartOfDay();
+                    LocalDateTime toDt = (to != null ? to : java.time.LocalDate.now()).plusDays(1).atStartOfDay();
+                    return trendItemRepository.findByStatusAndPeriodWithCategory(
+                        TrendItem.AnalysisStatus.DONE, fromDt, toDt)
+                        .stream().map(TrendItem::getId).toList();
+                }
                 if (from != null) {
                     LocalDateTime fromDt = from.atStartOfDay();
                     LocalDateTime toDt = (to != null ? to : java.time.LocalDate.now()).plusDays(1).atStartOfDay();
                     return trendItemRepository.findByAnalysisStatusAndCrawledAtBetweenAndScoreTotalIsNull(
                         TrendItem.AnalysisStatus.DONE, fromDt, toDt)
+                        .stream().map(TrendItem::getId).toList();
+                }
+                if (force) {
+                    return trendItemRepository.findByAnalysisStatusOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
                         .stream().map(TrendItem::getId).toList();
                 }
                 return trendItemRepository.findByAnalysisStatusAndScoreTotalIsNullOrderByCrawledAtAsc(TrendItem.AnalysisStatus.DONE)
