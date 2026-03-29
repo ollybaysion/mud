@@ -5,7 +5,7 @@ import type { TrendItem } from '@/lib/types';
 import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { relativeTime } from '@/lib/time';
 import { useReadHistory } from '@/lib/useReadHistory';
-import { SOURCE_CONFIG, SCORE_COLORS } from '@/constants/sources';
+import { SOURCE_CONFIG, getScoreColor } from '@/constants/sources';
 
 interface Props {
   item: TrendItem;
@@ -14,9 +14,8 @@ interface Props {
 export function TrendCard({ item }: Props) {
   const { isRead } = useReadHistory();
   const sourceConf = SOURCE_CONFIG[item.source] ?? SOURCE_CONFIG.GITHUB;
-  const scoreColor = item.relevanceScore
-    ? SCORE_COLORS[item.relevanceScore]
-    : '#64748b';
+  const score = item.scoreTotal ?? (item.relevanceScore ? item.relevanceScore * 20 : null);
+  const scoreColor = score != null ? getScoreColor(score) : '#64748b';
 
   const dateStr = item.publishedAt ?? item.crawledAt;
   const displayDate = relativeTime(dateStr);
@@ -36,7 +35,7 @@ export function TrendCard({ item }: Props) {
           {sourceConf.emoji} {sourceConf.label}
         </span>
 
-        {item.relevanceScore && (
+        {score != null && (
           <span
             className="score-badge"
             style={{
@@ -44,7 +43,7 @@ export function TrendCard({ item }: Props) {
               color: scoreColor,
             }}
           >
-            ★ {item.relevanceScore}/5
+            ★ {score}
           </span>
         )}
 

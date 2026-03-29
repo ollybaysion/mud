@@ -51,6 +51,6 @@ export const api = {
     apiFetch<TrendStats>('/api/stats', undefined, 300),
 
   getWeeklyReport: (week?: string) =>
-    apiFetch<WeeklyReport>('/api/reports/weekly', week ? { week } : undefined, 3600),
+    apiFetch<WeeklyReport>('/api/reports/weekly', week ? { week } : undefined, 300),
 
 };

@@ -6,7 +6,7 @@ import { BookmarkButton } from '@/components/ui/BookmarkButton';
 import { DeepAnalysisSection } from '@/components/ui/DeepAnalysisSection';
 import { sanitizeUrl, stripHtml } from '@/lib/url';
 import { ReadMarker } from '@/components/ui/ReadMarker';
-import { SOURCE_CONFIG, SCORE_COLORS, SCORE_LABELS } from '@/constants/sources';
+import { SOURCE_CONFIG, getScoreColor, getScoreLabel } from '@/constants/sources';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -46,8 +46,9 @@ export default async function TrendDetailPage({ params }: Props) {
   if (!item) notFound();
 
   const sourceConf = SOURCE_CONFIG[item.source] ?? SOURCE_CONFIG.GITHUB;
-  const scoreColor = item.relevanceScore ? SCORE_COLORS[item.relevanceScore] : '#64748b';
-  const scoreLabel = item.relevanceScore ? SCORE_LABELS[item.relevanceScore] : '';
+  const score = item.scoreTotal ?? (item.relevanceScore ? item.relevanceScore * 20 : null);
+  const scoreColor = score != null ? getScoreColor(score) : '#64748b';
+  const scoreLabel = score != null ? getScoreLabel(score) : '';
   const dateStr = item.publishedAt ?? item.crawledAt;
 
   return (
@@ -66,9 +67,9 @@ export default async function TrendDetailPage({ params }: Props) {
             {item.category.emoji} {item.category.displayName}
           </span>
         )}
-        {item.relevanceScore && (
+        {score != null && (
           <span className="score-badge" style={{ background: scoreColor + '22', color: scoreColor }}>
-            ★ {item.relevanceScore}/5 — {scoreLabel}
+            ★ {score}/100 — {scoreLabel}
           </span>
         )}
         {item.githubLanguage && (
@@ -113,6 +114,26 @@ export default async function TrendDetailPage({ params }: Props) {
           <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.7 }}>
             {stripHtml(item.description)}
           </p>
+        </div>
+      )}
+
+      {item.scoring && (
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '8px', fontWeight: 600 }}>
+            점수 상세
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {[
+              { label: '관련성', value: item.scoring.relevance },
+              { label: '시의성', value: item.scoring.timeliness },
+              { label: '실용성', value: item.scoring.actionability },
+              { label: '임팩트', value: item.scoring.impact },
+            ].map((s) => (
+              <div key={s.label} style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                {s.label} <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{s.value}</span>/10
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

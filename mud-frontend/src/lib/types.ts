@@ -22,6 +22,14 @@ export interface TrendItem {
   deepAnalysis: string | null;
   category: Category | null;
   relevanceScore: number | null;
+  scoreTotal: number | null;
+  scoring: {
+    relevance: number;
+    timeliness: number;
+    actionability: number;
+    impact: number;
+  } | null;
+  topicTag: string | null;
   keywords: string[];
   publishedAt: string | null;
   crawledAt: string;
