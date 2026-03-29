@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Category } from '@/lib/types';
+import { DigestSubscribe } from '@/components/ui/DigestSubscribe';
 
 interface Props {
   categories: Category[];
@@ -83,6 +84,7 @@ export function Sidebar({ categories }: Props) {
           ))}
         </ul>
       </nav>
+      <DigestSubscribe />
     </aside>
   );
 }
