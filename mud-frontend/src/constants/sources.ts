@@ -38,6 +38,19 @@ export const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji
   LINE_ENGINEERING: { label: 'LINE', color: '#06c755', emoji: '💚' },
   DAANGN: { label: '당근마켓', color: '#ff6f0f', emoji: '🥕' },
   COUPANG_ENGINEERING: { label: '쿠팡', color: '#e4002b', emoji: '🚀' },
+  BANKSALAD: { label: '뱅크샐러드', color: '#00d084', emoji: '💰' },
+  KURLY: { label: '마켓컬리', color: '#5f0080', emoji: '🟣' },
+  HYPERCONNECT: { label: '하이퍼커넥트', color: '#ff3d57', emoji: '📹' },
+  MUSINSA: { label: '무신사', color: '#1a1a1a', emoji: '👕' },
+  WATCHA: { label: '왓챠', color: '#ff0558', emoji: '🎬' },
+  ZIGBANG: { label: '직방', color: '#01b0f0', emoji: '🏠' },
+  NHN_TOAST: { label: 'NHN', color: '#e61e26', emoji: '☁️' },
+  DEVSISTERS: { label: '데브시스터즈', color: '#f5a623', emoji: '🎮' },
+  KAKAO_ENTERPRISE: { label: '카카오엔터프라이즈', color: '#fee500', emoji: '🏢' },
+  SOCAR: { label: '쏘카', color: '#00b8ff', emoji: '🚗' },
+  YOGIYO: { label: '요기요', color: '#fa0050', emoji: '🍕' },
+  RIDI: { label: '리디', color: '#1f8ce6', emoji: '📖' },
+  FORTYFOUR_BITS: { label: '44bits', color: '#6a8759', emoji: '💻' },
 };
 
 export const SCORE_COLORS = ['', '#64748b', '#f59e0b', '#3b82f6', '#10b981', '#a855f7'];
