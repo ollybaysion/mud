@@ -33,3 +33,19 @@ export const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji
 export const SCORE_COLORS = ['', '#64748b', '#f59e0b', '#3b82f6', '#10b981', '#a855f7'];
 
 export const SCORE_LABELS = ['', '관련성 낮음', '참고 수준', '알아두면 유용', '중요 트렌드', '즉시 적용 가능'];
+
+export function getScoreColor(score: number): string {
+  if (score >= 85) return '#a855f7';
+  if (score >= 65) return '#10b981';
+  if (score >= 45) return '#3b82f6';
+  if (score >= 25) return '#f59e0b';
+  return '#64748b';
+}
+
+export function getScoreLabel(score: number): string {
+  if (score >= 85) return '핵심 트렌드';
+  if (score >= 65) return '주요 트렌드';
+  if (score >= 45) return '알아두면 유용';
+  if (score >= 25) return '참고 수준';
+  return '관련성 낮음';
+}

@@ -23,13 +23,16 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
         WHERE t.analysisStatus = 'DONE'
         AND (:categorySlug IS NULL OR c.slug = :categorySlug)
         AND (:source IS NULL OR CAST(t.source AS string) = :source)
-        AND t.relevanceScore >= :minScore
+        AND (
+            (t.scoreTotal IS NOT NULL AND t.scoreTotal >= :minScore)
+            OR (t.scoreTotal IS NULL AND t.relevanceScore >= :minScore / 20)
+        )
         AND (
             CAST(:keyword AS string) IS NULL
             OR LOWER(t.title) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))
             OR LOWER(t.koreanSummary) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%'))
         )
-        ORDER BY t.publishedAt DESC NULLS LAST, t.relevanceScore DESC
+        ORDER BY t.publishedAt DESC NULLS LAST, t.scoreTotal DESC NULLS LAST
         """)
     Page<TrendItem> findWithFilters(
         @Param("categorySlug") String categorySlug,

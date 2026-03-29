@@ -37,7 +37,7 @@ public class TrendController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String source,
-            @RequestParam(defaultValue = "1") int minScore,
+            @RequestParam(defaultValue = "0") int minScore,
             @RequestParam(required = false) String keyword) {
 
         TrendFilterRequest filter = TrendFilterRequest.builder()
