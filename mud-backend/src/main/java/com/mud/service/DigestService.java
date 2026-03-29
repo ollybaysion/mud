@@ -45,9 +45,12 @@ public class DigestService {
     }
 
     private void sendDailyDigestForDate(LocalDate date, boolean force) {
-        if (!force && dailyDigestRepository.existsByDigestDate(date)) {
-            log.info("데일리 다이제스트 이미 발송됨: {}", date);
-            return;
+        if (dailyDigestRepository.existsByDigestDate(date)) {
+            if (!force) {
+                log.info("데일리 다이제스트 이미 발송됨: {}", date);
+                return;
+            }
+            dailyDigestRepository.deleteByDigestDate(date);
         }
 
         LocalDateTime startDt = date.atStartOfDay();

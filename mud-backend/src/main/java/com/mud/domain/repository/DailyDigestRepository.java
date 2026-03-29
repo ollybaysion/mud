@@ -8,4 +8,6 @@ import java.time.LocalDate;
 public interface DailyDigestRepository extends JpaRepository<DailyDigest, Long> {
 
     boolean existsByDigestDate(LocalDate date);
+
+    void deleteByDigestDate(LocalDate date);
 }
