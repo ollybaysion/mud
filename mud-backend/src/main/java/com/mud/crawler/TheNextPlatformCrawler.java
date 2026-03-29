@@ -1,6 +1,7 @@
 package com.mud.crawler;
 
 import com.mud.domain.entity.TrendItem;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 import com.mud.domain.repository.TrendItemRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.nodes.Document;
@@ -13,27 +14,26 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
-public class TomsHardwareCrawler extends CrawlerBase {
+public class TheNextPlatformCrawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://www.tomshardware.com/feeds/all";
+    private static final String RSS_URL = "https://www.nextplatform.com/feed/";
 
-    public TomsHardwareCrawler(TrendItemRepository trendItemRepository) {
+    public TheNextPlatformCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
     }
 
     @Override
     public CrawlSource getCrawlSource() {
-        return CrawlSource.TOMS_HARDWARE;
+        return CrawlSource.THE_NEXT_PLATFORM;
     }
 
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting Tom's Hardware RSS crawl");
+        log.info("Starting The Next Platform RSS crawl");
 
         try {
             Document doc = fetchXmlBrowser(RSS_URL);
@@ -62,7 +62,7 @@ public class TomsHardwareCrawler extends CrawlerBase {
                     .title(title)
                     .originalUrl(url)
                     .urlHash(urlHash)
-                    .source(TrendItem.CrawlSource.TOMS_HARDWARE)
+                    .source(CrawlSource.THE_NEXT_PLATFORM)
                     .description(description)
                     .publishedAt(publishedAt)
                     .crawledAt(LocalDateTime.now())
@@ -70,16 +70,13 @@ public class TomsHardwareCrawler extends CrawlerBase {
                     .build();
 
                 TrendItem saved = saveIfNew(trendItem);
-                if (saved != null) {
-                    results.add(saved);
-                    log.debug("Saved Tom's Hardware item: {}", title);
-                }
+                if (saved != null) results.add(saved);
             }
         } catch (Exception e) {
-            log.error("Tom's Hardware crawl failed: {}", e.getMessage());
+            log.error("The Next Platform crawl failed: {}", e.getMessage());
         }
 
-        log.info("Tom's Hardware crawl complete: {} new items", results.size());
+        log.info("The Next Platform crawl complete: {} new items", results.size());
         return results;
     }
 }
