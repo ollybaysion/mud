@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 public class IEEESpectrumCrawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://spectrum.ieee.org/feed/";
+    private static final String RSS_URL = "https://spectrum.ieee.org/feeds/feed.rss";
 
     public IEEESpectrumCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
