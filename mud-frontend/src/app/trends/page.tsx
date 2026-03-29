@@ -6,6 +6,8 @@ import { TrendGrid } from '@/components/trend/TrendGrid';
 import { Pagination } from '@/components/ui/Pagination';
 import { FilterBar } from '@/components/layout/FilterBar';
 import { FilterBarSkeleton } from '@/components/ui/Skeleton';
+import { DigestBanner } from '@/components/ui/DigestBanner';
+import { OnboardingGuide } from '@/components/ui/OnboardingGuide';
 import { relativeTime } from '@/lib/time';
 
 export const metadata: Metadata = {
@@ -35,7 +37,7 @@ export default async function TrendsPage({ searchParams }: Props) {
 
   const isFirstPage = page === 0 && !params.category && !params.source && !params.keyword;
 
-  const [trendsData, stats, topTrends] = await Promise.all([
+  const [trendsData, stats, topTrends, weeklyReport] = await Promise.all([
     api.getTrends({
       page,
       size: 20,
@@ -48,6 +50,9 @@ export default async function TrendsPage({ searchParams }: Props) {
     isFirstPage
       ? api.getTrends({ page: 0, size: 5, minScore: 65 }).catch(() => ({ content: [] }))
       : Promise.resolve({ content: [] }),
+    isFirstPage
+      ? api.getWeeklyReport().catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const categoryLabel = params.category
@@ -56,6 +61,16 @@ export default async function TrendsPage({ searchParams }: Props) {
 
   return (
     <>
+      <OnboardingGuide />
+
+      {isFirstPage && weeklyReport && (
+        <DigestBanner
+          periodStart={weeklyReport.periodStart}
+          periodEnd={weeklyReport.periodEnd}
+          totalCount={weeklyReport.totalCount}
+        />
+      )}
+
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
           {categoryLabel === '전체' ? '오늘의 기술 트렌드' : `${categoryLabel} 트렌드`}
