@@ -16,6 +16,7 @@ export default defineConfig({
         'src/lib/api.ts',
         'src/lib/actions.ts',
         'src/lib/types.ts',
+        'src/lib/useDeepAnalysis.ts',
         'src/components/ui/DeepAnalysisSection.tsx',
         'src/components/layout/Sidebar.tsx',
         'src/components/layout/FilterBar.tsx',
