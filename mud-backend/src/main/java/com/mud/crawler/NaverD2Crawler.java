@@ -17,23 +17,23 @@ import java.util.List;
 
 @Component
 @Slf4j
-public class IEEESpectrumCrawler extends CrawlerBase {
+public class NaverD2Crawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://spectrum.ieee.org/feeds/feed.rss";
+    private static final String RSS_URL = "https://d2.naver.com/helloworld/feed";
 
-    public IEEESpectrumCrawler(TrendItemRepository trendItemRepository) {
+    public NaverD2Crawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
     }
 
     @Override
     public CrawlSource getCrawlSource() {
-        return CrawlSource.IEEE_SPECTRUM;
+        return CrawlSource.NAVER_D2;
     }
 
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting IEEE Spectrum RSS crawl");
+        log.info("Starting Naver D2 RSS crawl");
 
         try {
             Document doc = fetchXmlBrowser(RSS_URL);
@@ -62,7 +62,7 @@ public class IEEESpectrumCrawler extends CrawlerBase {
                     .title(title)
                     .originalUrl(url)
                     .urlHash(urlHash)
-                    .source(CrawlSource.IEEE_SPECTRUM)
+                    .source(CrawlSource.NAVER_D2)
                     .description(description)
                     .publishedAt(publishedAt)
                     .crawledAt(LocalDateTime.now())
@@ -73,10 +73,10 @@ public class IEEESpectrumCrawler extends CrawlerBase {
                 if (saved != null) results.add(saved);
             }
         } catch (Exception e) {
-            log.error("IEEE Spectrum crawl failed: {}", e.getMessage());
+            log.error("Naver D2 crawl failed: {}", e.getMessage());
         }
 
-        log.info("IEEE Spectrum crawl complete: {} new items", results.size());
+        log.info("Naver D2 crawl complete: {} new items", results.size());
         return results;
     }
 }
