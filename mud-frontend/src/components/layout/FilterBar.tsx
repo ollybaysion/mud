@@ -37,11 +37,11 @@ const SOURCES = [
 ];
 
 const SCORE_OPTIONS = [
-  { value: '1', label: '전체 (★1+)' },
-  { value: '2', label: '참고 이상 (★2+)' },
-  { value: '3', label: '유용 이상 (★3+)' },
-  { value: '4', label: '중요 이상 (★4+)' },
-  { value: '5', label: '즉시 적용 (★5)' },
+  { value: '1', label: '전체' },
+  { value: '25', label: '★25+ 참고' },
+  { value: '45', label: '★45+ 일반' },
+  { value: '65', label: '★65+ 주요' },
+  { value: '85', label: '★85+ 핵심' },
 ];
 
 interface Props {
@@ -111,7 +111,7 @@ export function FilterBar({ currentSource, currentKeyword, currentMinScore }: Pr
       <select
         id="score-filter"
         className="source-select"
-        value={currentMinScore ?? '2'}
+        value={currentMinScore ?? '25'}
         onChange={(e) => updateParam('minScore', e.target.value)}
       >
         {SCORE_OPTIONS.map((s) => (

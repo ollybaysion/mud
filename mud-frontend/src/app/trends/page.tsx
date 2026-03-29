@@ -41,12 +41,12 @@ export default async function TrendsPage({ searchParams }: Props) {
       size: 20,
       category: params.category,
       source: params.source,
-      minScore: Number(params.minScore ?? 2),
+      minScore: Number(params.minScore ?? 25),
       keyword: params.keyword,
     }).catch(() => ({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 })),
     api.getStats().catch(() => null),
     isFirstPage
-      ? api.getTrends({ page: 0, size: 5, minScore: 4 }).catch(() => ({ content: [] }))
+      ? api.getTrends({ page: 0, size: 5, minScore: 65 }).catch(() => ({ content: [] }))
       : Promise.resolve({ content: [] }),
   ]);
 
@@ -81,7 +81,7 @@ export default async function TrendsPage({ searchParams }: Props) {
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {topTrends.content.map((item) => (
               <li key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <span style={{ color: '#a855f7', fontWeight: 600, flexShrink: 0 }}>★{item.relevanceScore}</span>
+                <span style={{ color: '#a855f7', fontWeight: 600, flexShrink: 0 }}>★{item.scoreTotal ?? (item.relevanceScore ? item.relevanceScore * 20 : '')}</span>
                 <Link href={`/trends/${item.id}`} style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {item.title}
                 </Link>
