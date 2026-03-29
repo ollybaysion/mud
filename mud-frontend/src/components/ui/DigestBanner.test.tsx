@@ -1,5 +1,5 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { describe, test, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { DigestBanner } from './DigestBanner';
 
 describe('DigestBanner', () => {
@@ -11,10 +11,6 @@ describe('DigestBanner', () => {
 
   beforeEach(() => {
     localStorage.clear();
-  });
-
-  afterEach(() => {
-    cleanup();
   });
 
   test('배너 표시', () => {
