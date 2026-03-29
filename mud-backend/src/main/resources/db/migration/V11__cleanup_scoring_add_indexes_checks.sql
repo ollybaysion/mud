@@ -13,7 +13,14 @@ DROP INDEX IF EXISTS idx_trend_summary_trgm;
 CREATE INDEX idx_trend_title_trgm ON trend_items USING gin (lower(title) gin_trgm_ops);
 CREATE INDEX idx_trend_summary_trgm ON trend_items USING gin (lower(korean_summary) gin_trgm_ops);
 
--- 4. score_* 컬럼에 CHECK 제약 추가
+-- 4. 기존 데이터 범위 클램핑 (CHECK 제약 추가 전 안전장치)
+UPDATE trend_items SET score_relevance = LEAST(10, GREATEST(0, score_relevance)) WHERE score_relevance IS NOT NULL AND score_relevance NOT BETWEEN 0 AND 10;
+UPDATE trend_items SET score_actionability = LEAST(10, GREATEST(0, score_actionability)) WHERE score_actionability IS NOT NULL AND score_actionability NOT BETWEEN 0 AND 10;
+UPDATE trend_items SET score_impact = LEAST(10, GREATEST(0, score_impact)) WHERE score_impact IS NOT NULL AND score_impact NOT BETWEEN 0 AND 10;
+UPDATE trend_items SET score_timeliness = LEAST(10, GREATEST(0, score_timeliness)) WHERE score_timeliness IS NOT NULL AND score_timeliness NOT BETWEEN 0 AND 10;
+UPDATE trend_items SET score_total = LEAST(100, GREATEST(0, score_total)) WHERE score_total IS NOT NULL AND score_total NOT BETWEEN 0 AND 100;
+
+-- 5. score_* 컬럼에 CHECK 제약 추가
 ALTER TABLE trend_items ADD CONSTRAINT chk_score_relevance CHECK (score_relevance BETWEEN 0 AND 10);
 ALTER TABLE trend_items ADD CONSTRAINT chk_score_actionability CHECK (score_actionability BETWEEN 0 AND 10);
 ALTER TABLE trend_items ADD CONSTRAINT chk_score_impact CHECK (score_impact BETWEEN 0 AND 10);
