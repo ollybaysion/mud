@@ -36,15 +36,22 @@ public class DigestService {
 
     @Transactional
     public void sendDailyDigest() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
+        sendDailyDigestForDate(LocalDate.now().minusDays(1), false);
+    }
 
-        if (dailyDigestRepository.existsByDigestDate(yesterday)) {
-            log.info("데일리 다이제스트 이미 발송됨: {}", yesterday);
+    @Transactional
+    public void sendDailyDigestNow() {
+        sendDailyDigestForDate(LocalDate.now().minusDays(1), true);
+    }
+
+    private void sendDailyDigestForDate(LocalDate date, boolean force) {
+        if (!force && dailyDigestRepository.existsByDigestDate(date)) {
+            log.info("데일리 다이제스트 이미 발송됨: {}", date);
             return;
         }
 
-        LocalDateTime startDt = yesterday.atStartOfDay();
-        LocalDateTime endDt = yesterday.atTime(23, 59, 59);
+        LocalDateTime startDt = date.atStartOfDay();
+        LocalDateTime endDt = date.atTime(23, 59, 59);
 
         List<TrendItem> topItems = trendItemRepository
             .findByStatusAndPeriodWithCategory(TrendItem.AnalysisStatus.DONE, startDt, endDt)
@@ -64,12 +71,12 @@ public class DigestService {
             return;
         }
 
-        String dateLabel = yesterday.format(DateTimeFormatter.ofPattern("M월 d일"));
+        String dateLabel = date.format(DateTimeFormatter.ofPattern("M월 d일"));
         String subject = "⚗️ Mud 데일리 트렌드 — " + dateLabel;
 
         // 트랜잭션 내에서 digest 저장 먼저
         DailyDigest digest = DailyDigest.builder()
-            .digestDate(yesterday)
+            .digestDate(date)
             .itemCount(topItems.size())
             .sentCount(subscribers.size())
             .build();
@@ -81,7 +88,7 @@ public class DigestService {
             emailService.sendHtmlEmail(subscriber.getEmail(), subject, html);
         }
 
-        log.info("데일리 다이제스트 발송 완료: date={}, items={}, sent={}", yesterday, topItems.size(), subscribers.size());
+        log.info("데일리 다이제스트 발송 완료: date={}, items={}, sent={}", date, topItems.size(), subscribers.size());
     }
 
     private String escapeHtml(String text) {
