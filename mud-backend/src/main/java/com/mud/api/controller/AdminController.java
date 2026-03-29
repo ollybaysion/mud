@@ -3,6 +3,7 @@ package com.mud.api.controller;
 import com.mud.domain.repository.DigestSubscriberRepository;
 import com.mud.scheduler.StartupCrawlRunner;
 import com.mud.service.AnalysisService;
+import com.mud.service.CrawlerMonitorService;
 import com.mud.service.DigestService;
 import com.mud.service.EmailService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AdminController {
     private final StartupCrawlRunner crawlRunner;
     private final AnalysisService analysisService;
     private final RedisConnectionFactory redisConnectionFactory;
+    private final CrawlerMonitorService crawlerMonitorService;
     private final EmailService emailService;
     private final DigestService digestService;
     private final DigestSubscriberRepository digestSubscriberRepository;
@@ -58,6 +60,11 @@ public class AdminController {
     @GetMapping("/rescore/status")
     public ResponseEntity<Map<String, Object>> rescoreStatus() {
         return ResponseEntity.ok(analysisService.getRescoreStatus());
+    }
+
+    @GetMapping("/crawlers/status")
+    public ResponseEntity<Map<String, Object>> crawlerStatus() {
+        return ResponseEntity.ok(crawlerMonitorService.getCrawlerStatus());
     }
 
     @PostMapping("/digest/test-email")
