@@ -49,6 +49,9 @@ public class StartupCrawlRunner {
     private final SemiEngineeringCrawler semiEngineeringCrawler;
     private final ChipsAndCheeseCrawler chipsAndCheeseCrawler;
     private final CNXSoftwareCrawler cnxSoftwareCrawler;
+    private final TheNextPlatformCrawler theNextPlatformCrawler;
+    private final HPCwireCrawler hpcwireCrawler;
+    private final IEEESpectrumCrawler ieeeSpectrumCrawler;
     private final AnalysisService analysisService;
     private final CrawlerMonitorService crawlerMonitorService;
 
@@ -96,6 +99,9 @@ public class StartupCrawlRunner {
         runCrawler("SEMI_ENGINEERING", semiEngineeringCrawler::crawl, all);
         runCrawler("CHIPS_AND_CHEESE", chipsAndCheeseCrawler::crawl, all);
         runCrawler("CNX_SOFTWARE", cnxSoftwareCrawler::crawl, all);
+        runCrawler("THE_NEXT_PLATFORM", theNextPlatformCrawler::crawl, all);
+        runCrawler("HPCWIRE", hpcwireCrawler::crawl, all);
+        runCrawler("IEEE_SPECTRUM", ieeeSpectrumCrawler::crawl, all);
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();

@@ -43,6 +43,9 @@ public class AllSourcesCrawlJob implements Job {
     @Autowired private SemiEngineeringCrawler semiEngineeringCrawler;
     @Autowired private ChipsAndCheeseCrawler chipsAndCheeseCrawler;
     @Autowired private CNXSoftwareCrawler cnxSoftwareCrawler;
+    @Autowired private TheNextPlatformCrawler theNextPlatformCrawler;
+    @Autowired private HPCwireCrawler hpcwireCrawler;
+    @Autowired private IEEESpectrumCrawler ieeeSpectrumCrawler;
     @Autowired private AnalysisService analysisService;
 
     @Override
@@ -76,6 +79,9 @@ public class AllSourcesCrawlJob implements Job {
             try { all.addAll(semiEngineeringCrawler.crawl()); }  catch (Exception e) { log.error("SemiEngineering 크롤 실패", e); }
             try { all.addAll(chipsAndCheeseCrawler.crawl()); }   catch (Exception e) { log.error("ChipsAndCheese 크롤 실패", e); }
             try { all.addAll(cnxSoftwareCrawler.crawl()); }      catch (Exception e) { log.error("CNX Software 크롤 실패", e); }
+            try { all.addAll(theNextPlatformCrawler.crawl()); }  catch (Exception e) { log.error("NextPlatform 크롤 실패", e); }
+            try { all.addAll(hpcwireCrawler.crawl()); }          catch (Exception e) { log.error("HPCwire 크롤 실패", e); }
+            try { all.addAll(ieeeSpectrumCrawler.crawl()); }     catch (Exception e) { log.error("IEEE Spectrum 크롤 실패", e); }
 
             analysisService.analyzePendingItems();
             log.info("=== All sources crawl job finished: {} new items ===", all.size());
