@@ -68,7 +68,7 @@ public class WeeklyReportService {
 
         List<TrendItem> highlights = periodItems.stream()
             .filter(item -> item.getScoreTotal() != null && item.getScoreTotal() >= 65)
-            .limit(15)
+            .limit(10)
             .toList();
 
         Map<String, Map<String, Object>> categoryStats = buildCategoryStats(periodItems);
