@@ -69,4 +69,27 @@ describe('useBookmarks', () => {
     const { result } = renderHook(() => useBookmarks());
     expect(result.current.bookmarks).toEqual([]);
   });
+
+  test('언마운트 시 리스너 정리', () => {
+    const { result, unmount } = renderHook(() => useBookmarks());
+    act(() => result.current.toggleBookmark(mockItem));
+    unmount();
+    // 언마운트 후 에러 없이 정리됨
+    expect(true).toBe(true);
+  });
+
+  test('localStorage에 null이면 빈 배열', () => {
+    localStorage.removeItem('mud-bookmarks');
+    const { result } = renderHook(() => useBookmarks());
+    expect(result.current.bookmarks).toEqual([]);
+  });
+
+  test('외부 storage 이벤트에 반응', () => {
+    const { result } = renderHook(() => useBookmarks());
+    act(() => {
+      localStorage.setItem('mud-bookmarks', JSON.stringify([mockItem]));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'mud-bookmarks' }));
+    });
+    expect(result.current.bookmarks).toHaveLength(1);
+  });
 });

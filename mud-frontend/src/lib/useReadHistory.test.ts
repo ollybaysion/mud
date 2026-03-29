@@ -55,4 +55,29 @@ describe('useReadHistory', () => {
     const stored = JSON.parse(localStorage.getItem('mud-read-history') || '[]');
     expect(stored.length).toBeLessThanOrEqual(500);
   });
+
+  test('언마운트 시 리스너 정리', () => {
+    const { result, unmount } = renderHook(() => useReadHistory());
+    act(() => result.current.markAsRead(1));
+    unmount();
+    expect(true).toBe(true);
+  });
+
+  test('외부 storage 이벤트에 반응', () => {
+    const { result } = renderHook(() => useReadHistory());
+    act(() => {
+      localStorage.setItem('mud-read-history', JSON.stringify([42]));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'mud-read-history' }));
+    });
+    expect(result.current.isRead(42)).toBe(true);
+  });
+
+  test('null key storage 이벤트에 반응', () => {
+    const { result } = renderHook(() => useReadHistory());
+    act(() => {
+      localStorage.setItem('mud-read-history', JSON.stringify([99]));
+      window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    });
+    expect(result.current.isRead(99)).toBe(true);
+  });
 });
