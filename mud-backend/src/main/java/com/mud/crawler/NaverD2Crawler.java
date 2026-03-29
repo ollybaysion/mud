@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 public class NaverD2Crawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://d2.naver.com/helloworld/feed";
+    private static final String ATOM_URL = "https://d2.naver.com/d2.atom";
 
     public NaverD2Crawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
@@ -33,28 +33,29 @@ public class NaverD2Crawler extends CrawlerBase {
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting Naver D2 RSS crawl");
+        log.info("Starting Naver D2 Atom crawl");
 
         try {
-            Document doc = fetchXmlBrowser(RSS_URL);
-            Elements items = doc.select("item");
+            Document doc = fetchXml(ATOM_URL);
+            Elements entries = doc.select("entry");
 
-            for (Element item : items) {
-                String url = item.select("link").text().trim();
+            for (Element entry : entries) {
+                Element linkEl = entry.select("link[rel=alternate]").first();
+                String url = linkEl != null ? linkEl.attr("href").trim() : "";
                 if (url.isEmpty()) continue;
 
                 String urlHash = computeUrlHash(url);
                 if (isDuplicate(urlHash)) continue;
 
-                String title = item.select("title").text().trim();
+                String title = entry.select("title").text().trim();
                 if (title.isEmpty()) continue;
 
-                String description = cleanDescription(item.select("description").text());
+                String description = cleanDescription(entry.select("content").text());
 
                 LocalDateTime publishedAt = LocalDateTime.now();
-                String pubDate = item.select("pubDate").text().trim();
+                String updated = entry.select("updated").text().trim();
                 try {
-                    publishedAt = ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME)
+                    publishedAt = ZonedDateTime.parse(updated, DateTimeFormatter.ISO_DATE_TIME)
                         .toLocalDateTime();
                 } catch (Exception ignored) {}
 

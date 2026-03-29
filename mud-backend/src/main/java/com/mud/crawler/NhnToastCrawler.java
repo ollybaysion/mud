@@ -17,66 +17,51 @@ import java.util.List;
 
 @Component
 @Slf4j
-public class WoowahanCrawler extends CrawlerBase {
+public class NhnToastCrawler extends CrawlerBase {
 
-    private static final String RSS_URL = "https://techblog.woowahan.com/feed/";
+    private static final String RSS_URL = "https://meetup.toast.com/rss";
 
-    public WoowahanCrawler(TrendItemRepository trendItemRepository) {
+    public NhnToastCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
     }
 
     @Override
     public CrawlSource getCrawlSource() {
-        return CrawlSource.WOOWAHAN;
+        return CrawlSource.NHN_TOAST;
     }
 
     @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
-        log.info("Starting Woowahan RSS crawl");
-
+        log.info("Starting NHN TOAST RSS crawl");
         try {
             Document doc = fetchXmlBrowser(RSS_URL);
             Elements items = doc.select("item");
-
             for (Element item : items) {
                 String url = item.select("link").text().trim();
                 if (url.isEmpty()) continue;
-
                 String urlHash = computeUrlHash(url);
                 if (isDuplicate(urlHash)) continue;
-
                 String title = item.select("title").text().trim();
                 if (title.isEmpty()) continue;
-
                 String description = cleanDescription(item.select("description").text());
-
                 LocalDateTime publishedAt = LocalDateTime.now();
                 String pubDate = item.select("pubDate").text().trim();
                 try {
-                    publishedAt = ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME)
-                        .toLocalDateTime();
+                    publishedAt = ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME).toLocalDateTime();
                 } catch (Exception ignored) {}
-
                 TrendItem trendItem = TrendItem.builder()
-                    .title(title)
-                    .originalUrl(url)
-                    .urlHash(urlHash)
-                    .source(CrawlSource.WOOWAHAN)
-                    .description(description)
-                    .publishedAt(publishedAt)
-                    .crawledAt(LocalDateTime.now())
-                    .analysisStatus(TrendItem.AnalysisStatus.PENDING)
-                    .build();
-
+                    .title(title).originalUrl(url).urlHash(urlHash)
+                    .source(CrawlSource.NHN_TOAST).description(description)
+                    .publishedAt(publishedAt).crawledAt(LocalDateTime.now())
+                    .analysisStatus(TrendItem.AnalysisStatus.PENDING).build();
                 TrendItem saved = saveIfNew(trendItem);
                 if (saved != null) results.add(saved);
             }
         } catch (Exception e) {
-            log.error("Woowahan crawl failed: {}", e.getMessage());
+            log.error("NHN TOAST crawl failed: {}", e.getMessage());
         }
-
-        log.info("Woowahan crawl complete: {} new items", results.size());
+        log.info("NHN TOAST crawl complete: {} new items", results.size());
         return results;
     }
 }
