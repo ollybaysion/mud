@@ -9,11 +9,15 @@ import com.mud.service.AnalysisService;
 import com.mud.service.TrendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,10 +29,31 @@ public class TrendController {
 
     private final TrendService trendService;
     private final AnalysisService analysisService;
+    private final DataSource dataSource;
+    private final RedisConnectionFactory redisConnectionFactory;
 
     @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("ok");
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "ok");
+
+        try (Connection conn = dataSource.getConnection()) {
+            conn.isValid(2);
+            result.put("db", "ok");
+        } catch (Exception e) {
+            result.put("db", "error");
+            result.put("status", "degraded");
+        }
+
+        try (var redisConn = redisConnectionFactory.getConnection()) {
+            String pong = redisConn.ping();
+            result.put("redis", "PONG".equals(pong) ? "ok" : "error");
+        } catch (Exception e) {
+            result.put("redis", "error");
+            result.put("status", "degraded");
+        }
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/trends")

@@ -65,7 +65,12 @@ function getServerSnapshot(): string {
 
 export function useReadHistory() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const readIds: number[] = JSON.parse(raw);
+  let readIds: number[];
+  try {
+    readIds = JSON.parse(raw);
+  } catch {
+    readIds = [];
+  }
 
   const isRead = useCallback(
     (id: number) => readIds.includes(id),
