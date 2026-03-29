@@ -57,7 +57,7 @@ class TrendServiceTest {
             PageRequest.of(0, 20), 1
         );
 
-        when(trendItemRepository.findWithFilters(isNull(), isNull(), eq(1), isNull(), any()))
+        when(trendItemRepository.findWithFilters(isNull(), isNull(), eq(0), isNull(), any()))
             .thenReturn(page);
 
         TrendPageResponse result = trendService.getTrends(filter);
