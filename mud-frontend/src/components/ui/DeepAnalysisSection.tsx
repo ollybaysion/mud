@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import Markdown from 'react-markdown';
+import dynamic from 'next/dynamic';
 import remarkGfm from 'remark-gfm';
 import type { TrendItem } from '@/lib/types';
+import { useDeepAnalysis } from '@/lib/useDeepAnalysis';
 
-const SSE_BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const Markdown = dynamic(() => import('react-markdown'), { ssr: false });
 
 const STAGE_LABELS: Record<string, string> = {
   started: '분석 준비 중...',
@@ -18,114 +18,8 @@ interface Props {
 }
 
 export function DeepAnalysisSection({ item }: Props) {
-  const [analysis, setAnalysis] = useState<string | null>(item.deepAnalysis);
-  const [loading, setLoading] = useState(false);
-  const [serverPercent, setServerPercent] = useState(0);
-  const [displayPercent, setDisplayPercent] = useState(0);
-  const [stage, setStage] = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const fakeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const cleanup = useCallback(() => {
-    if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
-    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
-    fakeTimerRef.current = null;
-    elapsedTimerRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    if (!loading) return;
-
-    elapsedTimerRef.current = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
-
-    return () => {
-      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
-    };
-  }, [loading]);
-
-  useEffect(() => {
-    if (!loading) return;
-
-    fakeTimerRef.current = setInterval(() => {
-      setDisplayPercent((prev) => {
-        if (prev >= 90) return 90;
-        const increment = 1 + Math.random() * 2;
-        return Math.min(prev + increment, 90);
-      });
-    }, 1500);
-
-    return () => {
-      if (fakeTimerRef.current) clearInterval(fakeTimerRef.current);
-    };
-  }, [loading]);
-
-  useEffect(() => {
-    if (serverPercent === 100) {
-      cleanup();
-      setDisplayPercent(100);
-    } else if (serverPercent > displayPercent) {
-      setDisplayPercent(serverPercent);
-    }
-  }, [serverPercent, displayPercent, cleanup]);
-
-  const handleGenerate = () => {
-    setLoading(true);
-    setError(null);
-    setServerPercent(0);
-    setDisplayPercent(0);
-    setStage('');
-    setElapsed(0);
-
-    const es = new EventSource(`${SSE_BASE}/api/trends/${item.id}/deep-analysis/stream`);
-    eventSourceRef.current = es;
-
-    es.addEventListener('progress', (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        setServerPercent(data.percent);
-        setStage(data.stage);
-      } catch {
-        // ignore
-      }
-    });
-
-    es.addEventListener('result', (e) => {
-      setAnalysis(e.data);
-      setLoading(false);
-      cleanup();
-      es.close();
-    });
-
-    es.addEventListener('error', (e) => {
-      if (e instanceof MessageEvent && e.data) {
-        try {
-          const data = JSON.parse(e.data);
-          setError(data.message || '분석 중 오류가 발생했습니다.');
-        } catch {
-          setError('분석 중 오류가 발생했습니다.');
-        }
-      } else {
-        setError('서버 연결이 끊어졌습니다.');
-      }
-      setLoading(false);
-      cleanup();
-      es.close();
-    });
-  };
-
-  const handleCancel = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-    setLoading(false);
-    cleanup();
-    setError(null);
-  };
+  const { analysis, loading, displayPercent, stage, elapsed, error, generate, cancel } =
+    useDeepAnalysis(item.id, item.deepAnalysis);
 
   const formatElapsed = (s: number) => {
     if (s < 60) return `${s}초`;
@@ -171,7 +65,7 @@ export function DeepAnalysisSection({ item }: Props) {
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <button
           type="button"
-          onClick={handleGenerate}
+          onClick={generate}
           disabled={loading}
           style={{
             display: 'inline-flex',
@@ -199,7 +93,7 @@ export function DeepAnalysisSection({ item }: Props) {
         {loading && (
           <button
             type="button"
-            onClick={handleCancel}
+            onClick={cancel}
             style={{
               padding: '10px 16px',
               background: 'none',
