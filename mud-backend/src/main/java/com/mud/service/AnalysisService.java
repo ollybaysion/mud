@@ -142,7 +142,7 @@ public class AnalysisService {
                         if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
                             : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
-                        int timeliness = calculateTimeliness(item.getPublishedAt());
+                        int timeliness = calculateTimeliness(item.getPublishedAt() != null ? item.getPublishedAt() : item.getCrawledAt());
                         int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
                         int stars = scoreToStars(scoreTotal);
 
@@ -277,6 +277,10 @@ public class AnalysisService {
              5 = 해당 기술 스택 사용자에게 영향
              3 = 니치하지만 깊은 영향
              0 = 영향 범위 극소
+
+            주의: GitHub Trending의 기존 유명 프로젝트(이미 널리 알려진 라이브러리/프레임워크)는
+            새로운 릴리즈, 메이저 업데이트, 보안 패치 등 구체적 변경이 없는 한
+            relevance와 actionability를 5 이하로 평가하세요.
             """.formatted(batch.size(), items);
     }
 
@@ -436,7 +440,7 @@ public class AnalysisService {
                                 if (item == null) continue;
                                 AnalysisResult result = (i < results.size()) ? results.get(i)
                                     : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
-                                int timeliness = calculateTimeliness(item.getPublishedAt());
+                                int timeliness = calculateTimeliness(item.getPublishedAt() != null ? item.getPublishedAt() : item.getCrawledAt());
                                 int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
                                 int stars = scoreToStars(scoreTotal);
 
