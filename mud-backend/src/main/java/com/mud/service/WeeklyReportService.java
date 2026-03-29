@@ -67,7 +67,7 @@ public class WeeklyReportService {
         int totalCount = periodItems.size();
 
         List<TrendItem> highlights = periodItems.stream()
-            .filter(item -> item.getRelevanceScore() != null && item.getRelevanceScore() >= 4)
+            .filter(item -> item.getScoreTotal() != null && item.getScoreTotal() >= 65)
             .limit(15)
             .toList();
 
@@ -78,7 +78,8 @@ public class WeeklyReportService {
                 "id", item.getId(),
                 "title", item.getTitle(),
                 "source", item.getSource().name(),
-                "relevanceScore", item.getRelevanceScore(),
+                "scoreTotal", item.getScoreTotal() != null ? item.getScoreTotal() : 0,
+                "relevanceScore", item.getRelevanceScore() != null ? item.getRelevanceScore() : 0,
                 "categorySlug", item.getCategory() != null ? item.getCategory().getSlug() : "general",
                 "koreanSummary", item.getKoreanSummary() != null ? item.getKoreanSummary() : "",
                 "originalUrl", item.getOriginalUrl()
@@ -122,8 +123,8 @@ public class WeeklyReportService {
             .collect(Collectors.groupingBy(item -> item.getCategory().getSlug()))
             .forEach((slug, catItems) -> {
                 double avgScore = catItems.stream()
-                    .filter(i -> i.getRelevanceScore() != null)
-                    .mapToInt(TrendItem::getRelevanceScore)
+                    .filter(i -> i.getScoreTotal() != null)
+                    .mapToInt(i -> i.getScoreTotal().intValue())
                     .average().orElse(0);
                 stats.put(slug, Map.of("count", catItems.size(), "avgScore", Math.round(avgScore * 10) / 10.0));
             });

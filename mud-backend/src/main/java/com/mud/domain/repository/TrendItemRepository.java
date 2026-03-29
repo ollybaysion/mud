@@ -66,7 +66,7 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
         LEFT JOIN FETCH t.category
         WHERE t.analysisStatus = :status
         AND t.crawledAt BETWEEN :start AND :end
-        ORDER BY t.relevanceScore DESC, t.publishedAt DESC
+        ORDER BY t.scoreTotal DESC NULLS LAST, t.publishedAt DESC
         """)
     List<TrendItem> findByStatusAndPeriodWithCategory(
         @Param("status") TrendItem.AnalysisStatus status,
