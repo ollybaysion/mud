@@ -17,4 +17,10 @@ public interface CrawlerRunRepository extends JpaRepository<CrawlerRun, Long> {
     List<CrawlerRun> findLatestBySource();
 
     long countBySourceAndStatusAndStartedAtGreaterThan(String source, String status, java.time.LocalDateTime after);
+
+    List<CrawlerRun> findByStartedAtBetweenOrderByStartedAtDesc(
+        java.time.LocalDateTime from, java.time.LocalDateTime to);
+
+    List<CrawlerRun> findByStatusAndStartedAtBetweenOrderByStartedAtDesc(
+        String status, java.time.LocalDateTime from, java.time.LocalDateTime to);
 }

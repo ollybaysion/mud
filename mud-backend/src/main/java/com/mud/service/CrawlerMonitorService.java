@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -90,6 +91,39 @@ public class CrawlerMonitorService {
                 "failed", failedCount,
                 "lastCheckedAt", LocalDateTime.now().toString()
             )
+        );
+    }
+
+    public Map<String, Object> getCrawlerHistory(LocalDate from, LocalDate to, String status) {
+        LocalDateTime fromDt = from.atStartOfDay();
+        LocalDateTime toDt = to.atTime(23, 59, 59);
+
+        List<CrawlerRun> runs;
+        if (status != null && !status.isBlank()) {
+            runs = crawlerRunRepository.findByStatusAndStartedAtBetweenOrderByStartedAtDesc(status, fromDt, toDt);
+        } else {
+            runs = crawlerRunRepository.findByStartedAtBetweenOrderByStartedAtDesc(fromDt, toDt);
+        }
+
+        List<Map<String, Object>> history = runs.stream().map(run -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("source", run.getSource());
+            map.put("startedAt", run.getStartedAt().toString());
+            map.put("finishedAt", run.getFinishedAt() != null ? run.getFinishedAt().toString() : null);
+            map.put("status", run.getStatus());
+            map.put("itemsCollected", run.getItemsCollected());
+            map.put("errorMessage", run.getErrorMessage());
+            return map;
+        }).toList();
+
+        long okCount = history.stream().filter(h -> "OK".equals(h.get("status"))).count();
+        long failedCount = history.stream().filter(h -> "FAILED".equals(h.get("status"))).count();
+
+        return Map.of(
+            "from", from.toString(),
+            "to", to.toString(),
+            "runs", history,
+            "summary", Map.of("total", history.size(), "ok", okCount, "failed", failedCount)
         );
     }
 }

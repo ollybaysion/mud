@@ -67,6 +67,18 @@ public class AdminController {
         return ResponseEntity.ok(crawlerMonitorService.getCrawlerStatus());
     }
 
+    @GetMapping("/crawlers/history")
+    public ResponseEntity<Map<String, Object>> crawlerHistory(
+            @org.springframework.web.bind.annotation.RequestParam
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate from,
+            @org.springframework.web.bind.annotation.RequestParam
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+            java.time.LocalDate to,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String status) {
+        return ResponseEntity.ok(crawlerMonitorService.getCrawlerHistory(from, to, status));
+    }
+
     @PostMapping("/digest/test-email")
     public ResponseEntity<Map<String, String>> testEmail(@RequestParam String to) {
         log.info("테스트 이메일 발송: {}", to);
