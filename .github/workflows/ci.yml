@@ -117,6 +117,31 @@ jobs:
         working-directory: mud-frontend
         run: npm run lint
 
+      - name: Test
+        working-directory: mud-frontend
+        run: npm test
+
+      - name: Test Coverage
+        working-directory: mud-frontend
+        run: npm run test:coverage
+
+      - name: Print Coverage
+        if: always()
+        working-directory: mud-frontend
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const c = require('./coverage/coverage-summary.json').total;
+              console.log('📊 FE Coverage: ' +
+                'Stmts ' + c.statements.pct + '% | ' +
+                'Branch ' + c.branches.pct + '% | ' +
+                'Funcs ' + c.functions.pct + '% | ' +
+                'Lines ' + c.lines.pct + '%');
+            "
+          else
+            echo '⚠️ Coverage report not found'
+          fi
+
       - name: Build
         working-directory: mud-frontend
         env:
