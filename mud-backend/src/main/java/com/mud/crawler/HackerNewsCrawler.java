@@ -13,6 +13,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
@@ -35,7 +36,11 @@ public class HackerNewsCrawler extends CrawlerBase {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.HACKER_NEWS;
+    }
+
+    @Override
     public List<TrendItem> crawl() {
         List<TrendItem> results = new ArrayList<>();
         log.info("Starting Hacker News crawl");

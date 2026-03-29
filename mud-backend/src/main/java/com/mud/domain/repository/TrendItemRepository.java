@@ -17,6 +17,8 @@ public interface TrendItemRepository extends JpaRepository<TrendItem, Long> {
 
     List<TrendItem> findByAnalysisStatusInOrderByCrawledAtAsc(List<TrendItem.AnalysisStatus> statuses);
 
+    Page<TrendItem> findByAnalysisStatusInOrderByCrawledAtAsc(List<TrendItem.AnalysisStatus> statuses, Pageable pageable);
+
     @Query("""
         SELECT t FROM TrendItem t
         LEFT JOIN FETCH t.category c

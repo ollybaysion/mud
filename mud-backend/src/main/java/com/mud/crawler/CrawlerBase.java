@@ -1,6 +1,7 @@
 package com.mud.crawler;
 
 import com.mud.domain.entity.TrendItem;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 import com.mud.domain.repository.TrendItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,4 +109,10 @@ public abstract class CrawlerBase {
     }
 
     public abstract List<TrendItem> crawl();
+
+    public abstract CrawlSource getCrawlSource();
+
+    public String getSourceName() {
+        return getCrawlSource().name();
+    }
 }

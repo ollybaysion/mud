@@ -20,6 +20,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import org.springframework.integration.redis.util.RedisLockRegistry;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -61,9 +64,6 @@ public class AnalysisService {
     @Value("${analysis.batch-size:5}")
     private int batchSize;
 
-    @Value("${scoring.phase:2}")
-    private int scoringPhase;
-
     @Value("${claude.api.deep-analysis-model:claude-sonnet-4-6}")
     private String deepAnalysisModel;
 
@@ -90,30 +90,41 @@ public class AnalysisService {
         }
 
         try {
-            List<TrendItem> pendingItems = trendItemRepository
-                .findByAnalysisStatusInOrderByCrawledAtAsc(
-                    List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED));
+            List<TrendItem.AnalysisStatus> statuses = List.of(TrendItem.AnalysisStatus.PENDING, TrendItem.AnalysisStatus.FAILED);
+            int pageSize = batchSize * 10; // 페이지당 최대 로드 수
+            int totalProcessed = 0;
 
-            if (pendingItems.isEmpty()) {
+            Page<TrendItem> page;
+            do {
+                page = trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(
+                    statuses, PageRequest.of(0, pageSize));
+
+                if (page.isEmpty()) break;
+
+                List<List<TrendItem>> batches = partition(page.getContent(), batchSize);
+                log.info("Starting batch analysis: {} items in {} batches (batchSize={}, concurrency={})",
+                    page.getNumberOfElements(), batches.size(), batchSize, concurrency);
+
+                AtomicInteger analyzedBatches = new AtomicInteger();
+
+                List<CompletableFuture<Void>> futures = batches.stream()
+                    .map(batch -> CompletableFuture.runAsync(
+                        () -> analyzeBatch(batch, analyzedBatches, batches.size()), executor))
+                    .toList();
+
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                totalProcessed += page.getNumberOfElements();
+
+                log.info("Analysis page complete: {}/{} batches, total processed so far: {}",
+                    analyzedBatches.get(), batches.size(), totalProcessed);
+            } while (page.hasNext());
+
+            if (totalProcessed > 0) {
+                log.info("Analysis complete: {} items processed", totalProcessed);
+                trendService.evictTrendCaches();
+            } else {
                 log.debug("No pending or failed items to analyze");
-                return;
             }
-
-            List<List<TrendItem>> batches = partition(pendingItems, batchSize);
-            log.info("Starting batch analysis: {} items in {} batches (batchSize={}, concurrency={})",
-                pendingItems.size(), batches.size(), batchSize, concurrency);
-
-            AtomicInteger analyzedBatches = new AtomicInteger();
-
-            List<CompletableFuture<Void>> futures = batches.stream()
-                .map(batch -> CompletableFuture.runAsync(
-                    () -> analyzeBatch(batch, analyzedBatches, batches.size()), executor))
-                .toList();
-
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
-            log.info("Analysis complete: {}/{} batches processed", analyzedBatches.get(), batches.size());
-            trendService.evictTrendCaches();
         } finally {
             lock.unlock();
         }
@@ -142,28 +153,7 @@ public class AnalysisService {
                         if (item == null) continue;
                         AnalysisResult result = (i < results.size()) ? results.get(i)
                             : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
-                        int timeliness = calculateTimeliness(item.getPublishedAt() != null ? item.getPublishedAt() : item.getCrawledAt());
-                        int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
-                        int stars = scoreToStars(scoreTotal);
-
-                        item.setKoreanSummary(result.koreanSummary());
-                        item.setKeywords(result.keywords());
-                        item.setTopicTag(result.topicTag());
-                        // 새 100점 체계
-                        item.setScoreRelevance((short) result.scoringRelevance());
-                        item.setScoreActionability((short) result.scoringActionability());
-                        item.setScoreImpact((short) result.scoringImpact());
-                        item.setScoreTimeliness((short) timeliness);
-                        item.setScoreTotal((short) scoreTotal);
-                        // 구 체계 호환 (기존 scoring_* 도 업데이트)
-                        item.setScoringRelevance((short) result.scoringRelevance());
-                        item.setScoringTimeliness((short) timeliness);
-                        item.setScoringActionability((short) result.scoringActionability());
-                        item.setScoringImpact((short) result.scoringImpact());
-                        item.setRelevanceScore(stars);
-                        categoryRepository.findBySlug(result.categorySlug())
-                            .ifPresent(item::setCategory);
-                        item.setAnalyzedAt(LocalDateTime.now());
+                        applyAnalysisResult(item, result);
                         item.setAnalysisStatus(TrendItem.AnalysisStatus.DONE);
                     }
                     trendItemRepository.saveAll(managedMap.values());
@@ -368,6 +358,29 @@ public class AnalysisService {
         return 5;
     }
 
+    private void applyAnalysisResult(TrendItem item, AnalysisResult result) {
+        int timeliness = calculateTimeliness(item.getPublishedAt() != null ? item.getPublishedAt() : item.getCrawledAt());
+        int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
+        int stars = scoreToStars(scoreTotal);
+
+        item.setKoreanSummary(result.koreanSummary());
+        item.setKeywords(result.keywords());
+        item.setTopicTag(result.topicTag());
+        item.setScoreRelevance((short) result.scoringRelevance());
+        item.setScoreActionability((short) result.scoringActionability());
+        item.setScoreImpact((short) result.scoringImpact());
+        item.setScoreTimeliness((short) timeliness);
+        item.setScoreTotal((short) scoreTotal);
+        item.setScoringRelevance((short) result.scoringRelevance());
+        item.setScoringTimeliness((short) timeliness);
+        item.setScoringActionability((short) result.scoringActionability());
+        item.setScoringImpact((short) result.scoringImpact());
+        item.setRelevanceScore(stars);
+        categoryRepository.findBySlug(result.categorySlug())
+            .ifPresent(item::setCategory);
+        item.setAnalyzedAt(LocalDateTime.now());
+    }
+
     record AnalysisResult(
         String koreanSummary,
         String categorySlug,
@@ -440,27 +453,8 @@ public class AnalysisService {
                                 if (item == null) continue;
                                 AnalysisResult result = (i < results.size()) ? results.get(i)
                                     : new AnalysisResult("분석 실패", "general", 0, List.of(), 5, 0, 3, 3, null);
-                                int timeliness = calculateTimeliness(item.getPublishedAt() != null ? item.getPublishedAt() : item.getCrawledAt());
-                                int scoreTotal = calculateScoreTotal(result.scoringRelevance(), result.scoringActionability(), result.scoringImpact(), timeliness);
-                                int stars = scoreToStars(scoreTotal);
-
-                                item.setKoreanSummary(result.koreanSummary());
-                                item.setKeywords(result.keywords());
-                                item.setTopicTag(result.topicTag());
-                                item.setScoreRelevance((short) result.scoringRelevance());
-                                item.setScoreActionability((short) result.scoringActionability());
-                                item.setScoreImpact((short) result.scoringImpact());
-                                item.setScoreTimeliness((short) timeliness);
-                                item.setScoreTotal((short) scoreTotal);
-                                item.setScoringRelevance((short) result.scoringRelevance());
-                                item.setScoringTimeliness((short) timeliness);
-                                item.setScoringActionability((short) result.scoringActionability());
-                                item.setScoringImpact((short) result.scoringImpact());
-                                item.setRelevanceScore(stars);
-                                categoryRepository.findBySlug(result.categorySlug())
-                                    .ifPresent(item::setCategory);
-                                item.setAnalyzedAt(LocalDateTime.now());
-                                if (scoreTotal < 15) {
+                                applyAnalysisResult(item, result);
+                                if (item.getScoreTotal() < 15) {
                                     item.setAnalysisStatus(TrendItem.AnalysisStatus.REJECTED);
                                 }
                             }

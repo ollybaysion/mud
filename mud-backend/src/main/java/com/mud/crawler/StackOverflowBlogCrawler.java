@@ -13,6 +13,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
@@ -22,6 +23,11 @@ public class StackOverflowBlogCrawler extends CrawlerBase {
 
     public StackOverflowBlogCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
+    }
+
+    @Override
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.STACKOVERFLOW_BLOG;
     }
 
     @Override

@@ -17,6 +17,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.data.domain.Page;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +50,6 @@ class AnalysisServiceScoringTest {
         ReflectionTestUtils.setField(service, "semaphore", new Semaphore(2));
         ReflectionTestUtils.setField(service, "concurrency", 2);
         ReflectionTestUtils.setField(service, "batchSize", 5);
-        ReflectionTestUtils.setField(service, "scoringPhase", 2);
     }
 
     // --- calculateTimeliness ---
@@ -253,8 +254,8 @@ class AnalysisServiceScoringTest {
     void analyzePendingItemsNoPending() {
         var lock = new ReentrantLock();
         when(redisLockRegistry.obtain("analysis:pending")).thenReturn(lock);
-        when(trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(any()))
-            .thenReturn(List.of());
+        when(trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(any(), any()))
+            .thenReturn(Page.empty());
 
         service.analyzePendingItems();
     }

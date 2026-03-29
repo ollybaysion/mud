@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
@@ -23,6 +24,11 @@ public class GitHubTrendingCrawler extends CrawlerBase {
 
     public GitHubTrendingCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
+    }
+
+    @Override
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.GITHUB;
     }
 
     @Override
