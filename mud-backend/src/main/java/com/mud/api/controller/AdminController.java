@@ -7,7 +7,7 @@ import com.mud.service.DigestService;
 import com.mud.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +22,7 @@ public class AdminController {
 
     private final StartupCrawlRunner crawlRunner;
     private final AnalysisService analysisService;
-    private final RedisConnectionFactory redisConnectionFactory;
+    private final CacheManager cacheManager;
     private final EmailService emailService;
     private final DigestService digestService;
     private final DigestSubscriberRepository digestSubscriberRepository;
@@ -36,9 +36,14 @@ public class AdminController {
 
     @PostMapping("/flush-cache")
     public ResponseEntity<Map<String, String>> flushRedis() {
-        log.info("Redis FLUSHALL 실행");
-        redisConnectionFactory.getConnection().serverCommands().flushAll();
-        return ResponseEntity.ok(Map.of("status", "Redis 캐시 전체 삭제 완료"));
+        log.info("Redis 캐시 클리어 실행");
+        cacheManager.getCacheNames().forEach(name -> {
+            var cache = cacheManager.getCache(name);
+            if (cache != null) {
+                cache.clear();
+            }
+        });
+        return ResponseEntity.ok(Map.of("status", "Redis 캐시 삭제 완료"));
     }
 
     @PostMapping("/analyze")
