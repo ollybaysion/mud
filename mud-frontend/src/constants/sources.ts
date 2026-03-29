@@ -28,6 +28,16 @@ export const SOURCE_CONFIG: Record<string, { label: string; color: string; emoji
   CHIPS_AND_CHEESE: { label: 'Chips and Cheese', color: '#f5a623', emoji: '🧀' },
   VIDEOCARDZ: { label: 'VideoCardz', color: '#1e90ff', emoji: '🎮' },
   CNX_SOFTWARE: { label: 'CNX Software', color: '#2e8b57', emoji: '💾' },
+  THE_NEXT_PLATFORM: { label: 'The Next Platform', color: '#2563eb', emoji: '🖥️' },
+  HPCWIRE: { label: 'HPCwire', color: '#e11d48', emoji: '⚡' },
+  IEEE_SPECTRUM: { label: 'IEEE Spectrum', color: '#00629b', emoji: '📡' },
+  NAVER_D2: { label: '네이버 D2', color: '#1ec800', emoji: '🟢' },
+  KAKAO_TECH: { label: '카카오 기술', color: '#fee500', emoji: '💬' },
+  WOOWAHAN: { label: '우아한형제들', color: '#2ac1bc', emoji: '🍔' },
+  TOSS_TECH: { label: '토스 기술', color: '#0064ff', emoji: '💙' },
+  LINE_ENGINEERING: { label: 'LINE', color: '#06c755', emoji: '💚' },
+  DAANGN: { label: '당근마켓', color: '#ff6f0f', emoji: '🥕' },
+  COUPANG_ENGINEERING: { label: '쿠팡', color: '#e4002b', emoji: '🚀' },
 };
 
 export const SCORE_COLORS = ['', '#64748b', '#f59e0b', '#3b82f6', '#10b981', '#a855f7'];
