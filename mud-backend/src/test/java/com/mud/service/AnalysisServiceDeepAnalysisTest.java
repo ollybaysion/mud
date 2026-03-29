@@ -17,6 +17,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.data.domain.Page;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -81,8 +83,8 @@ class AnalysisServiceDeepAnalysisTest {
     void analyzePendingItemsNoPending() {
         var lock = new java.util.concurrent.locks.ReentrantLock();
         when(redisLockRegistry.obtain("analysis:pending")).thenReturn(lock);
-        when(trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(any()))
-            .thenReturn(List.of());
+        when(trendItemRepository.findByAnalysisStatusInOrderByCrawledAtAsc(any(), any()))
+            .thenReturn(Page.empty());
 
         service.analyzePendingItems();
     }

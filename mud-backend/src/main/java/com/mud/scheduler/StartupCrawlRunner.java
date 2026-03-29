@@ -1,6 +1,6 @@
 package com.mud.scheduler;
 
-import com.mud.crawler.*;
+import com.mud.crawler.CrawlerBase;
 import com.mud.domain.entity.TrendItem;
 import com.mud.service.AnalysisService;
 import com.mud.service.CrawlerMonitorService;
@@ -14,41 +14,13 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class StartupCrawlRunner {
 
-    private final HackerNewsCrawler hackerNewsCrawler;
-    private final GitHubTrendingCrawler gitHubTrendingCrawler;
-    private final ArXivCrawler arXivCrawler;
-    private final DevToCrawler devToCrawler;
-    private final RedditRssCrawler redditRssCrawler;
-    private final PapersWithCodeCrawler papersWithCodeCrawler;
-    private final InfoQCrawler infoQCrawler;
-    private final HuggingFaceCrawler huggingFaceCrawler;
-    private final LobstersCrawler lobstersCrawler;
-    private final InsideJavaCrawler insideJavaCrawler;
-    private final ISOCppCrawler isoCppCrawler;
-    private final TLDRCrawler tldrCrawler;
-    private final TheNewStackCrawler theNewStackCrawler;
-    private final CNCFCrawler cncfCrawler;
-    private final StackOverflowBlogCrawler stackOverflowBlogCrawler;
-    private final MartinFowlerCrawler martinFowlerCrawler;
-    private final JetBrainsCrawler jetBrainsCrawler;
-    private final GeekNewsCrawler geekNewsCrawler;
-    private final NvidiaBlogCrawler nvidiaBlogCrawler;
-    private final ServeTheHomeCrawler serveTheHomeCrawler;
-    private final TomsHardwareCrawler tomsHardwareCrawler;
-    private final PhoronixCrawler phoronixCrawler;
-    private final TechPowerUpCrawler techPowerUpCrawler;
-    private final HackadayCrawler hackadayCrawler;
-    private final EETimesCrawler eeTimesCrawler;
-    private final SemiEngineeringCrawler semiEngineeringCrawler;
-    private final ChipsAndCheeseCrawler chipsAndCheeseCrawler;
-    private final CNXSoftwareCrawler cnxSoftwareCrawler;
+    private final List<CrawlerBase> crawlers;
     private final AnalysisService analysisService;
     private final CrawlerMonitorService crawlerMonitorService;
 
@@ -66,50 +38,23 @@ public class StartupCrawlRunner {
     }
 
     public void runAllCrawlers() {
-        log.info("전체 크롤러 실행 시작");
+        log.info("전체 크롤러 실행 시작: {}개 크롤러", crawlers.size());
         List<TrendItem> all = new ArrayList<>();
-        runCrawler("HACKER_NEWS", hackerNewsCrawler::crawl, all);
-        runCrawler("DEV_TO", devToCrawler::crawl, all);
-        runCrawler("REDDIT", redditRssCrawler::crawl, all);
-        runCrawler("ARXIV", arXivCrawler::crawl, all);
-        runCrawler("GITHUB", gitHubTrendingCrawler::crawl, all);
-        runCrawler("PAPERS_WITH_CODE", papersWithCodeCrawler::crawl, all);
-        runCrawler("INFOQ", infoQCrawler::crawl, all);
-        runCrawler("HUGGING_FACE", huggingFaceCrawler::crawl, all);
-        runCrawler("LOBSTERS", lobstersCrawler::crawl, all);
-        runCrawler("INSIDE_JAVA", insideJavaCrawler::crawl, all);
-        runCrawler("ISOCPP", isoCppCrawler::crawl, all);
-        runCrawler("TLDR_AI", tldrCrawler::crawl, all);
-        runCrawler("THE_NEW_STACK", theNewStackCrawler::crawl, all);
-        runCrawler("CNCF", cncfCrawler::crawl, all);
-        runCrawler("STACKOVERFLOW_BLOG", stackOverflowBlogCrawler::crawl, all);
-        runCrawler("MARTIN_FOWLER", martinFowlerCrawler::crawl, all);
-        runCrawler("JETBRAINS", jetBrainsCrawler::crawl, all);
-        runCrawler("GEEKNEWS", geekNewsCrawler::crawl, all);
-        runCrawler("NVIDIA_BLOG", nvidiaBlogCrawler::crawl, all);
-        runCrawler("SERVE_THE_HOME", serveTheHomeCrawler::crawl, all);
-        runCrawler("TOMS_HARDWARE", tomsHardwareCrawler::crawl, all);
-        runCrawler("PHORONIX", phoronixCrawler::crawl, all);
-        runCrawler("TECHPOWERUP", techPowerUpCrawler::crawl, all);
-        runCrawler("HACKADAY", hackadayCrawler::crawl, all);
-        runCrawler("EE_TIMES", eeTimesCrawler::crawl, all);
-        runCrawler("SEMI_ENGINEERING", semiEngineeringCrawler::crawl, all);
-        runCrawler("CHIPS_AND_CHEESE", chipsAndCheeseCrawler::crawl, all);
-        runCrawler("CNX_SOFTWARE", cnxSoftwareCrawler::crawl, all);
+
+        for (CrawlerBase crawler : crawlers) {
+            String source = crawler.getSourceName();
+            LocalDateTime startedAt = LocalDateTime.now();
+            try {
+                List<TrendItem> items = crawler.crawl();
+                all.addAll(items);
+                crawlerMonitorService.recordRun(source, startedAt, items.size(), null);
+            } catch (Exception e) {
+                log.error("{} 크롤 실패", source, e);
+                crawlerMonitorService.recordRun(source, startedAt, 0, e.getMessage());
+            }
+        }
 
         log.info("크롤링 완료: 총 {}개 신규 항목", all.size());
         analysisService.analyzePendingItems();
-    }
-
-    private void runCrawler(String source, Supplier<List<TrendItem>> crawler, List<TrendItem> all) {
-        LocalDateTime startedAt = LocalDateTime.now();
-        try {
-            List<TrendItem> items = crawler.get();
-            all.addAll(items);
-            crawlerMonitorService.recordRun(source, startedAt, items.size(), null);
-        } catch (Exception e) {
-            log.error("{} 크롤 실패", source, e);
-            crawlerMonitorService.recordRun(source, startedAt, 0, e.getMessage());
-        }
     }
 }
