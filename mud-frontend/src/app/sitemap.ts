@@ -11,20 +11,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'hourly',
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/digest`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ];
 
   try {
-    const data = await api.getTrends({ page: 0, size: 50, minScore: 3 });
-    for (const item of data.content) {
+    // 상위 200건 수집 (4 페이지 × 50건)
+    for (let page = 0; page < 4; page++) {
+      const data = await api.getTrends({ page, size: 50, minScore: 25 });
+      for (const item of data.content) {
+        entries.push({
+          url: `${SITE_URL}/trends/${item.id}`,
+          lastModified: new Date(item.publishedAt ?? item.crawledAt),
+          changeFrequency: 'weekly',
+          priority: 0.7,
+        });
+      }
+      if (data.content.length < 50) break;
+    }
+  } catch {
+    // API 실패 시 정적 페이지만 포함
+  }
+
+  // 카테고리 페이지
+  try {
+    const categories = await api.getCategories();
+    for (const cat of categories) {
       entries.push({
-        url: `${SITE_URL}/trends/${item.id}`,
-        lastModified: new Date(item.publishedAt ?? item.crawledAt),
-        changeFrequency: 'weekly',
-        priority: 0.7,
+        url: `${SITE_URL}/trends?category=${cat.slug}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 0.8,
       });
     }
   } catch {
-    // API 실패 시 메인 페이지만 포함
+    // 무시
   }
 
   return entries;

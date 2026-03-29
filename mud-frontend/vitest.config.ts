@@ -11,7 +11,24 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'json-summary'],
-      include: ['src/lib/**', 'src/constants/**'],
+      include: ['src/lib/**', 'src/constants/**', 'src/components/**'],
+      exclude: [
+        'src/lib/api.ts',
+        'src/lib/actions.ts',
+        'src/lib/types.ts',
+        'src/lib/useDeepAnalysis.ts',
+        'src/components/ui/DeepAnalysisSection.tsx',
+        'src/components/layout/Sidebar.tsx',
+        'src/components/layout/FilterBar.tsx',
+        'src/components/trend/TrendCard.tsx',
+        'src/components/ui/Pagination.tsx',
+      ],
+      thresholds: {
+        statements: 75,
+        branches: 60,
+        functions: 65,
+        lines: 75,
+      },
     },
   },
   resolve: {

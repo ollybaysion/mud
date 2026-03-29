@@ -33,6 +33,8 @@ class SecurityConfigTest {
     @Autowired private MockMvc mockMvc;
     @MockBean private TrendService trendService;
     @MockBean private AnalysisService analysisService;
+    @MockBean private javax.sql.DataSource dataSource;
+    @MockBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
 
     @Test
     @DisplayName("공개 API는 인증 없이 접근 가능")
