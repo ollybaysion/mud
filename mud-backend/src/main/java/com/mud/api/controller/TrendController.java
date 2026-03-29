@@ -45,8 +45,8 @@ public class TrendController {
             result.put("status", "degraded");
         }
 
-        try {
-            String pong = redisConnectionFactory.getConnection().ping();
+        try (var redisConn = redisConnectionFactory.getConnection()) {
+            String pong = redisConn.ping();
             result.put("redis", "PONG".equals(pong) ? "ok" : "error");
         } catch (Exception e) {
             result.put("redis", "error");
