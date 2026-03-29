@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import com.mud.domain.entity.TrendItem.CrawlSource;
 
 @Component
 @Slf4j
@@ -22,6 +23,11 @@ public class ArXivCrawler extends CrawlerBase {
 
     public ArXivCrawler(TrendItemRepository trendItemRepository) {
         super(trendItemRepository);
+    }
+
+    @Override
+    public CrawlSource getCrawlSource() {
+        return CrawlSource.ARXIV;
     }
 
     @Override

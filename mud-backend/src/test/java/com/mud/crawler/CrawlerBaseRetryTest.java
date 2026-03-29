@@ -23,6 +23,7 @@ class CrawlerBaseRetryTest {
 
     static class TestCrawler extends CrawlerBase {
         public TestCrawler(TrendItemRepository repo) { super(repo); }
+        @Override public TrendItem.CrawlSource getCrawlSource() { return TrendItem.CrawlSource.GITHUB; }
         @Override public List<TrendItem> crawl() { return List.of(); }
     }
 
